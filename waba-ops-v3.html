@@ -476,7 +476,22 @@ let selectedAC=null,currentFlight=null,leafletMap=null,acMarkers={};
 function sColor(s){return{AVAILABLE:'#A8D5A2',IN_FLIGHT:'#7EB8D4',MAINTENANCE:'#E8A87C',SCHEDULED:'#C8A96E',DUE:'#E8A87C',WARNING:'#C8A96E',OK:'#A8D5A2'}[s]||'#aaa';}
 function sLabel(s){return{AVAILABLE:'Disponible',IN_FLIGHT:'En vol',MAINTENANCE:'Maintenance',SCHEDULED:'Planifié',COMPLETED:'Terminé',CANCELLED:'Annulé',FERRY:'Vol de mise en place'}[s]||s;}
 function badge(s,l){const c=sColor(s);return`<span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}55">${l||sLabel(s)}</span>`;}
-function genNo(){return'WAB'+Math.floor(Math.random()*900+100);}
+function genNo(origin, isFerry){
+  if(isFerry) return 'WAB'+Math.floor(Math.random()*600+300); // 300-899
+  if(origin==='LFRS') return 'WAB'+Math.floor(Math.random()*99+100); // 100-199
+  if(origin==='LFRZ') return 'WAB'+Math.floor(Math.random()*99+200); // 200-299
+  return 'WAB'+Math.floor(Math.random()*600+300); // 300-899
+}
+
+function getCallsign(flightNo, isFerry, aircraftId){
+  if(isFerry) return aircraftId.replace('-',''); // ex: FEVOK
+  return flightNo; // ex: WAB317
+}
+
+function getSimBriefFltNum(flightNo){
+  // Remove WAB prefix for SimBrief fltnum field
+  return flightNo.replace('WAB','');
+}
 function rand(a){return a[Math.floor(Math.random()*a.length)];}
 function showToast(msg,type='ok'){
   const t=document.getElementById('toast'),c=type==='err'?'#E8A87C':'#A8D5A2';
@@ -859,7 +874,7 @@ async function generateSchedule(){
       const ferryArrMin=currentTimeMin+ferryDurMin+20; // +20min roulage/handling
 
       newFlights.push({
-        flight_no:genNo(),
+        flight_no:genNo(state.pos, true),
         rotation_id:rotId,
         sequence:1,
         aircraft_id:ac.id,
@@ -893,7 +908,7 @@ async function generateSchedule(){
     const arrTotalMin=currentTimeMin+commercialDurMin+20;
 
     newFlights.push({
-      flight_no:genNo(),
+      flight_no:genNo(r.from, false),
       rotation_id:rotId,
       sequence:2,
       aircraft_id:ac.id,
@@ -908,7 +923,25 @@ async function generateSchedule(){
       duration:`${Math.floor(commercialDurMin/60)}h${String(commercialDurMin%60).padStart(2,'0')}`,
       pax_count:Math.floor(Math.random()*(ac.seats-1))+1,
       segment:r.segment,
-      planned_fl:ac.max_fl>400?'FL430':'FL370',
+      planned_fl:(()=>{
+        // Realistic FL based on distance and aircraft ceiling
+        const d=r.dist_nm;
+        const maxFl=ac.max_fl;
+        let fl;
+        if(d<200) fl=Math.min(250,maxFl); // Short hop - FL250 max
+        else if(d<500) fl=Math.min(370,maxFl); // Medium - FL370
+        else if(d<1500) fl=Math.min(410,maxFl); // Long - FL410
+        else fl=Math.min(430,maxFl); // Ultra long - FL430
+        // RVSM: eastbound = odd FLs (290,310,330...), westbound = even FLs (280,300,320...)
+        // Simple east/west based on longitude difference
+        const depLon=AIRPORTS_CACHE[r.from]?.lon||0;
+        const arrLon=AIRPORTS_CACHE[r.to]?.lon||0;
+        const eastbound=arrLon>depLon;
+        // Round to nearest valid RVSM level
+        const baseFL=Math.round(fl/10)*10;
+        const rvsm=eastbound?(baseFL%20===10?baseFL:baseFL+10):(baseFL%20===0?baseFL:baseFL+10);
+        return 'FL'+Math.min(rvsm,maxFl);
+      })(),
       alternate:r.to==='LFPB'?'LFPO':r.to==='EGLF'?'EGKB':'LFRS',
       captain_id:crew.cpt.id,
       fo_id:crew.fo.id,
@@ -944,7 +977,7 @@ async function generateSchedule(){
       retDate.setDate(retDate.getDate()+dayIndex+retDayOffset);
 
       newFlights.push({
-        flight_no:genNo(),
+        flight_no:genNo(r.to, true),
         rotation_id:rotId,
         sequence:3,
         aircraft_id:ac.id,
@@ -1126,7 +1159,7 @@ function openSimBrief(){
 
   const params = new URLSearchParams({
     airline:'WAB',
-    fltnum:f.flight_no,
+    fltnum:getSimBriefFltNum(f.flight_no)||f.flight_no.replace('WAB',''),
     type:acInfo.type,
     orig:f.origin,
     dest:f.destination,
@@ -1231,7 +1264,7 @@ function openBriefing(fid){
   document.getElementById('modal-ferry-badge').style.display=f.is_ferry?'inline-block':'none';
 
   // GENERAL
-  const infos=[['N° de vol',f.flight_no],['Appareil',`${f.aircraft_id} (${ac?.type||'—'})`],['Départ',`${f.origin} — ${f.dep_time}`],['Arrivée',`${f.destination} — ${f.arr_time}`],['Commandant de bord',cpt?.name||'—'],['Copilote',fo?.name||'—'],['Distance',`${f.distance_nm} NM`],['Durée',f.duration],['Passagers',`${f.pax_count} PAX`],['Segment',f.segment],['FL prévu',f.planned_fl||'FL370'],['Alternate',f.alternate||'—']];
+  const infos=[['N° de vol',f.flight_no],['Callsign radio',f.is_ferry?(f.aircraft_id.replace('-','')):f.flight_no],['Appareil',`${f.aircraft_id} (${ac?.type||'—'})`],['Départ',`${f.origin} — ${f.dep_time}`],['Arrivée',`${f.destination} — ${f.arr_time}`],['Commandant de bord',cpt?.name||'—'],['Copilote',fo?.name||'—'],['Distance',`${f.distance_nm} NM`],['Durée',f.duration],['Passagers',`${f.pax_count} PAX`],['Segment',f.segment],['FL prévu',f.planned_fl||'FL370'],['Alternate',f.alternate||'—']];
   document.getElementById('tab-general').innerHTML=`
     ${f.is_ferry?`<div class="ferry-banner">✈ VOL DE MISE EN PLACE — ${f.origin} → ${f.destination} · Sans passagers commerciaux</div>`:''}
     <div class="brief-grid">${infos.map(([l,v])=>`<div class="brief-item"><div class="brief-label">${l}</div><div class="brief-val">${v}</div></div>`).join('')}</div>`;
