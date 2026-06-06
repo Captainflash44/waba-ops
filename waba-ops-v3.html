@@ -1236,9 +1236,22 @@ document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.targe
 // ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
+// Vérifier l'authentification
+async function checkAuth(){
+  const {data:{session}} = await db.auth.getSession();
+  if(!session){ window.location.href='login.html'; return; }
+  // Vérifier le rôle
+  const {data:pilot} = await db.from('pilots').select('role').eq('user_id',session.user.id).single();
+  if(!pilot || (pilot.role!=='ADMIN' && pilot.role!=='DISPATCH')){
+    window.location.href='waba-pilot.html';
+    return;
+  }
+  fetchAll().then(setupRealtime);
+}
+
 document.getElementById('sync-label').textContent='Connexion...';
 document.getElementById('sync-dot').className='dot red';
-fetchAll().then(setupRealtime);
+checkAuth();
 </script>
 </body>
 </html>
