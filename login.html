@@ -195,43 +195,47 @@ async function redirectAfterLogin(user){
 
 async function register(){
   const name=document.getElementById('reg-name').value.trim();
-  const msfs=document.getElementById('reg-msfs').value.trim();
   const email=document.getElementById('reg-email').value.trim();
   const password=document.getElementById('reg-password').value;
-  const role=document.getElementById('reg-role').value;
+  const simbrief=document.getElementById('reg-simbrief').value.trim();
+  const qt=document.getElementById('reg-qt').value;
+  const motivation=document.getElementById('reg-motivation').value.trim();
 
-  if(!name||!email||!password||!msfs){showMessage('Veuillez remplir tous les champs.');return;}
-  if(password.length<8){showMessage('Le mot de passe doit faire au moins 8 caractères.');return;}
+  if(!name||!email||!password){showMessage('Veuillez remplir tous les champs obligatoires.');return;}
+  if(password.length<8){showMessage('Le mot de passe doit faire au moins 8 caracteres.');return;}
+  if(!motivation){showMessage('Veuillez indiquer vos motivations pour rejoindre WABA.');return;}
 
   const btn=document.getElementById('reg-btn');
-  btn.disabled=true;btn.textContent='Création en cours…';
+  btn.disabled=true;btn.textContent='Envoi en cours...';
 
   const{data,error}=await db.auth.signUp({email,password,options:{
-    data:{name,msfs_pseudo:msfs,role,status:'PENDING'}
+    data:{name,simbrief_id:simbrief,qt_requested:qt,status:'PENDING'}
   }});
 
   if(error){
     showMessage('Erreur : '+error.message);
-    btn.disabled=false;btn.textContent='Créer mon compte';
+    btn.disabled=false;btn.textContent='Soumettre ma candidature';
     return;
   }
 
-  // Créer une entrée dans pilots avec statut PENDING
   await db.from('pilots').insert({
     id:'P_'+Date.now(),
-    name,
-    rank:'FO', // Par défaut, l'admin peut changer
-    role,
+    name:name,
+    rank:'CPT',
+    role:'PILOTE',
     base:'LFRS',
     total_hours:0,
     ratings:[],
-    email,
-    user_id:data.user?.id,
+    email:email,
+    simbrief_id:simbrief||null,
+    qt_requested:qt,
+    motivation:motivation,
+    user_id:data.user?data.user.id:null,
     status:'PENDING',
   });
 
-  showMessage('Compte créé ! Vous recevrez un email de confirmation une fois votre profil validé par l\'administration.','success');
-  btn.disabled=false;btn.textContent='Créer mon compte';
+  showMessage('Candidature envoyee ! Votre dossier sera examine par administration WABA.','success');
+  btn.disabled=false;btn.textContent='Soumettre ma candidature';
 }
 
 
