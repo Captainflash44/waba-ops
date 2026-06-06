@@ -285,7 +285,8 @@ nav{flex:1;padding:10px 8px;overflow-y:auto;}
         <div style="font-size:11px;color:var(--text2);margin-top:3px" id="modal-sub">—</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="simbrief-btn" id="simbrief-btn" onclick="loadSimBrief()">📡 Charger SimBrief</button>
+        <button class="simbrief-btn" id="simbrief-open-btn" onclick="openSimBrief()" style="background:linear-gradient(135deg,#1a6b8a,#0d4a61);border:1px solid var(--blue);color:#fff;border-radius:7px;padding:9px 14px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">✈ Créer plan SimBrief</button>
+        <button class="simbrief-btn" id="simbrief-btn" onclick="loadSimBrief()" style="background:#7EB8D422;border:1px solid #7EB8D444;color:var(--blue);border-radius:7px;padding:9px 14px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">📡 Charger OFP</button>
         <button class="btn btn-ghost" onclick="closeModal()">✕</button>
       </div>
     </div>
@@ -301,7 +302,7 @@ nav{flex:1;padding:10px 8px;overflow-y:auto;}
     </div>
     <div class="modal-body">
       <div class="tab-content active" id="tab-general"></div>
-      <div class="tab-content" id="tab-simbrief"><div style="text-align:center;padding:30px;color:var(--text2)">Cliquez sur "Charger SimBrief" pour importer le plan de vol</div></div>
+      <div class="tab-content" id="tab-simbrief"><div style="text-align:center;padding:30px;color:var(--text2)">Cliquez sur "✈ Créer plan SimBrief" pour commencer</div></div>
       <div class="tab-content" id="tab-pax"></div>
       <div class="tab-content" id="tab-cargo"></div>
       <div class="tab-content" id="tab-wx"></div>
