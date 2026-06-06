@@ -2040,6 +2040,41 @@ async function checkAuth(){
 document.getElementById('sync-label').textContent='Connexion...';
 document.getElementById('sync-dot').className='dot red';
 checkAuth();
+updateAuthBtn();
+async function handleAuth(){
+  const{data:{session}}=await db.auth.getSession();
+  if(session){
+    // Already logged in - offer logout
+    if(confirm('Vous êtes connecté. Voulez-vous vous déconnecter ?')){
+      await db.auth.signOut();
+      window.location.href='login.html';
+    }
+  } else {
+    window.location.href='login.html';
+  }
+}
+
+// Update auth button based on session
+async function updateAuthBtn(){
+  const{data:{session}}=await db.auth.getSession();
+  const btn=document.getElementById('auth-btn');
+  if(!btn) return;
+  if(session){
+    const{data:pilot}=await db.from('pilots').select('name,role').eq('user_id',session.user.id).single();
+    if(pilot){
+      btn.textContent=pilot.name?.split(' ')[0]||'Connecté';
+      btn.style.borderColor='var(--green)';
+      btn.style.color='var(--green)';
+      btn.onmouseover=()=>{btn.style.borderColor='var(--orange)';btn.style.color='var(--orange)';}
+      btn.onmouseout=()=>{btn.style.borderColor='var(--green)';btn.style.color='var(--green)';}
+    }
+  } else {
+    btn.textContent='→ Se connecter';
+    btn.style.borderColor='var(--gold)';
+    btn.style.color='var(--gold)';
+  }
+}
+
 </script>
 </body>
 </html>
