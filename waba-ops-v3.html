@@ -1984,7 +1984,7 @@ async function loadPilotComments(icao){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
         <div style="font-size:11px;color:var(--text);font-weight:700">${c.pilots?.name||'Pilote WABA'}</div>
         <div style="display:flex;gap:2px">
-          ${[1,2,3,4,5].map(n=>`<span style="color:${n<=(c.rating||0)?'var(--gold)':'var(--text3)';font-size:12px">★</span>`).join('')}
+          ${[1,2,3,4,5].map(n=>{const sc=n<=(c.rating||0)?'var(--gold)':'var(--text3)';return`<span style="color:${sc};font-size:12px">★</span>`;}).join('')}
           <span style="font-size:10px;color:var(--text3);margin-left:6px">${new Date(c.created_at).toLocaleDateString('fr-FR')}</span>
         </div>
       </div>
