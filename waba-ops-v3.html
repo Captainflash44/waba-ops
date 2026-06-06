@@ -296,6 +296,7 @@ nav{flex:1;padding:10px 8px;overflow-y:auto;}
       <button class="modal-tab" onclick="switchTab('wx')">Météo</button>
       <button class="modal-tab" onclick="switchTab('notam')">NOTAM</button>
       <button class="modal-tab" onclick="switchTab('fuel')">Carburant</button>
+      <button class="modal-tab" onclick="switchTab('handling')">Handling</button>
     </div>
     <div class="modal-body">
       <div class="tab-content active" id="tab-general"></div>
@@ -1210,18 +1211,271 @@ function openBriefing(fid){
     <div style="background:#7EB8D411;border:1px solid #7EB8D433;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">📡 NOTAMs disponibles via Navigraph Charts ou SIA France</div>
     ${[{id:'A1234/26',airport:f.origin,type:'AERODROME',text:'Vérifiez les NOTAMs officiels sur Navigraph ou SIA avant le vol.',warn:false},{id:'B5678/26',airport:f.destination,type:'NAVIGATION',text:'Vérifiez les NOTAMs officiels sur Navigraph ou SIA avant le vol.',warn:false}].map(n=>`<div style="background:var(--card);border-radius:7px;padding:11px 14px;border:1px solid var(--border);margin-bottom:7px"><div style="display:flex;gap:9px;margin-bottom:7px;align-items:center"><div style="font-size:11px;font-weight:800;color:var(--gold);font-family:'JetBrains Mono',monospace">${n.id}</div>${badge('OK',n.type)}<div style="font-size:10px;color:var(--blue)">${n.airport}</div></div><div style="font-size:11px;color:var(--text)">${n.text}</div></div>`).join('')}`;
 
-  // FUEL (realistic per aircraft)
-  const fuel=ac?calcFuel(ac.id,f.distance_nm||300,ac.cruise_kt):null;
-  document.getElementById('tab-fuel').innerHTML=fuel
-    ?`<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">Plan carburant — ${ac?.type}</div>
-      <div style="background:var(--card2);border-radius:7px;padding:8px 13px;margin-bottom:13px;font-size:11px;color:var(--text2)">Capacité réservoirs ${ac?.id} : <span style="color:var(--text);font-weight:700">${fuel.capacity.toLocaleString()} kg</span> · Consommation croisière : <span style="color:var(--text);font-weight:700">${AC_PERF[ac?.id]?.fuel_flow_kg_h||'—'} kg/h</span></div>
-      ${[['Carburant de route (trip)',`${fuel.trip_fuel.toLocaleString()} kg`,`${f.distance_nm} NM @ ${ac?.cruise_kt} kt`],['Montée',`${fuel.climb.toLocaleString()} kg`,'Profil standard'],['Descente',`${fuel.descent.toLocaleString()} kg`,'Profil standard'],['Carburant alternat',`${fuel.alternate.toLocaleString()} kg`,f.alternate||'—'],['Réserve finale 45 min',`${fuel.reserve.toLocaleString()} kg`,'EU OPS 1.255'],['Contingence 5%',`${fuel.cont.toLocaleString()} kg`,'EU OPS'],['Roulage départ',`${fuel.taxi.toLocaleString()} kg`,'Estimé']].map(([l,v,s])=>`<div class="fuel-row"><div><div style="font-size:12px;color:var(--text);font-weight:600">${l}</div><div style="font-size:10px;color:var(--text2)">${s}</div></div><div style="font-size:12px;font-weight:700;color:var(--blue)">${v}</div></div>`).join('')}
-      <div class="fuel-total"><div><div style="font-size:13px;font-weight:800;color:var(--gold)">TOTAL EMPORT CARBURANT</div><div style="font-size:10px;color:${fuel.feasible?'var(--green)':'var(--orange)'};margin-top:2px">${fuel.feasible?`✓ Faisable — Marge : ${(fuel.capacity-fuel.total).toLocaleString()} kg`:'⚠ Dépasse la capacité — Vol impossible sans escale !'}</div></div><div style="font-size:20px;font-weight:900;color:var(--gold)">${fuel.total.toLocaleString()} kg</div></div>
-      <div style="font-size:10px;color:var(--text3);padding:7px 13px;margin-top:4px">📡 Utilisez SimBrief pour un calcul précis avec météo et vent réels</div>`
-    :`<div style="text-align:center;padding:30px;color:var(--text2)">Données carburant non disponibles</div>`;
+  // ── FUEL TAB ──
+  const fuel = ac ? calcFuel(ac.id, f.distance_nm||300, ac.cruise_kt) : null;
+  const acPerf = AC_PERF[f.aircraft_id] || {};
+
+  // Fuel commander discretion: get stored value or default to SimBrief recommendation
+  const fuelKey = 'fuel_extra_' + f.id;
+  const storedExtra = parseInt(localStorage.getItem(fuelKey)||'0');
+
+  document.getElementById('tab-fuel').innerHTML = fuel ? `
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">Plan carburant — ${f.aircraft_id}</div>
+
+    <!-- Rappel réglementaire EASA -->
+    <div style="background:#7EB8D411;border:1px solid #7EB8D433;border-radius:9px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:800;color:var(--blue);margin-bottom:8px;letter-spacing:1px">⚖ RÉGLEMENTATION EASA PART-NCC — EU 965/2012 modifié EU 2021/1296</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--text2);line-height:1.6">
+        <div>✓ <strong style="color:var(--text)">Carburant de route</strong> — A→B selon performances</div>
+        <div>✓ <strong style="color:var(--text)">Contingence 5%</strong> — minimum légal (Basic Scheme)</div>
+        <div>✓ <strong style="color:var(--text)">Carburant alternat</strong> — B→Alternat obligatoire</div>
+        <div style="color:var(--orange)">⚠ <strong>Réserve finale 30 min</strong> — MINIMUM ABSOLU intouchable</div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text2);border-top:1px solid #7EB8D422;padding-top:8px">
+        Le commandant peut <strong style="color:var(--green)">ajouter du carburant additionnel</strong> à sa discrétion. Il ne peut jamais descendre sous la réserve finale de 30 min en vol.
+      </div>
+    </div>
+
+    <!-- Décomposition carburant -->
+    <div style="font-size:10px;color:var(--text2);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Décomposition réglementaire</div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+      ${[
+        ['Roulage départ', fuel.taxi, 'Estimé 15 min', false],
+        ['Carburant de route', fuel.trip_fuel, f.distance_nm+' NM @ '+ac.cruise_kt+' kt', false],
+        ['Montée', fuel.climb, 'Profil standard', false],
+        ['Descente', fuel.descent, 'Profil standard', false],
+        ['Contingence 5%', fuel.cont, 'Basic Scheme EASA', false],
+        ['Carburant alternat', fuel.alternate, f.alternate||'—', false],
+        ['Réserve finale 30 min ⚠', fuel.reserve, 'MINIMUM ABSOLU — intouchable', true],
+      ].map(([l,v,s,warn]) =>
+        `<div style="background:var(--card);border-radius:7px;padding:9px 14px;border:1px solid ${warn?'var(--orange)':'var(--border)'};display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:12px;color:${warn?'var(--orange)':'var(--text)'};font-weight:${warn?'700':'600'}">${l}</div>
+            <div style="font-size:10px;color:var(--text2)">${s}</div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:${warn?'var(--orange)':'var(--blue)'}">${v.toLocaleString('fr-FR')} kg</div>
+        </div>`
+      ).join('')}
+    </div>
+
+    <!-- Carburant additionnel commandant -->
+    <div style="background:var(--card);border-radius:9px;padding:14px 16px;border:1px solid var(--gold);margin-bottom:12px">
+      <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:10px;letter-spacing:1px">✈ CARBURANT ADDITIONNEL — Décision commandant de bord</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+        En tant que commandant de bord, vous pouvez emporter du carburant supplémentaire au-delà du minimum légal.
+        Motifs courants : météo dégradée, ATC restrictions, terrain exigeant, manque de données sur l'alternat.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Carburant additionnel (kg)</div>
+          <input type="number" id="fuel-extra" value="${storedExtra}" min="0" max="${Math.max(0,fuel.capacity-fuel.total)}" step="50"
+            style="width:100%;background:var(--card2);border:1px solid var(--gold);border-radius:6px;padding:8px 12px;color:var(--text);font-size:14px;outline:none;font-family:'JetBrains Mono',monospace"
+            oninput="updateFuelTotal('${f.id}')"/>
+        </div>
+        <div style="text-align:center;min-width:120px">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:5px">Marge disponible</div>
+          <div style="font-size:16px;color:var(--green);font-weight:800;font-family:'JetBrains Mono',monospace">${(fuel.capacity-fuel.total).toLocaleString('fr-FR')} kg</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[0,100,200,500,1000].filter(v=>v<=fuel.capacity-fuel.total).map(v=>
+          `<button onclick="setFuelExtra('${f.id}',${v})" style="background:${v===storedExtra?'var(--gold)':'var(--card2)'};color:${v===storedExtra?'#000':'var(--text2)'};border:1px solid ${v===storedExtra?'var(--gold)':'var(--border)'};border-radius:5px;padding:5px 12px;cursor:pointer;font-size:11px;font-family:'JetBrains Mono',monospace">
+            ${v===0?'Min légal':'+'+v+' kg'}
+          </button>`
+        ).join('')}
+      </div>
+      ${storedExtra>0?`<div style="margin-top:8px;font-size:11px;color:var(--gold)">→ Motif recommandé : notez votre justification dans le rapport de vol final.</div>`:''}
+    </div>
+
+    <!-- Total final -->
+    <div id="fuel-total-block" style="background:#C8A96E22;border-radius:8px;padding:12px 16px;border:1px solid var(--gold);display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:var(--gold)">TOTAL EMPORT CARBURANT</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px" id="fuel-feasibility-label">
+          ${fuel.feasible?'✓ Faisable — Marge : '+(fuel.capacity-fuel.total).toLocaleString('fr-FR')+' kg':'⚠ Dépasse la capacité !'}
+        </div>
+      </div>
+      <div id="fuel-total-display" style="font-size:22px;font-weight:900;color:var(--gold);font-family:'JetBrains Mono',monospace">
+        ${(fuel.total+storedExtra).toLocaleString('fr-FR')} kg
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);padding:6px 12px">
+      Capacité réservoirs ${f.aircraft_id} : ${fuel.capacity.toLocaleString('fr-FR')} kg · Conso croisière : ${acPerf.fuel_flow_kg_h||'—'} kg/h
+    </div>
+  ` : `<div style="text-align:center;padding:30px;color:var(--text2)">Données carburant non disponibles</div>`;
+
+  // ── HANDLING TAB ──
+  const handlingData = getHandlingData(f.destination, f.aircraft_id, ac);
+  document.getElementById('tab-handling').innerHTML = `
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">Handling & Services au sol — ${f.destination}</div>
+
+    <!-- FBO & Parking -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div style="background:var(--card);border-radius:9px;padding:14px 16px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">FBO / Handling</div>
+        <div style="font-size:15px;color:var(--text);font-weight:700;margin-bottom:4px">${handlingData.fbo}</div>
+        <div style="font-size:11px;color:var(--text2)">${handlingData.fbo_contact||'Contact à confirmer'}</div>
+      </div>
+      <div style="background:var(--card);border-radius:9px;padding:14px 16px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Parking recommandé</div>
+        <div style="font-size:15px;color:var(--blue);font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:4px">${handlingData.parking}</div>
+        <div style="font-size:11px;color:var(--text2)">${handlingData.parking_note||'—'}</div>
+      </div>
+    </div>
+
+    <!-- Limitations -->
+    ${handlingData.limitations.length > 0 ? `
+    <div style="background:#E8A87C11;border:1px solid #E8A87C44;border-radius:9px;padding:12px 16px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:800;color:var(--orange);margin-bottom:8px">⚠ LIMITATIONS & CONTRAINTES</div>
+      ${handlingData.limitations.map(l=>`<div style="font-size:11px;color:var(--text);margin-bottom:4px">· ${l}</div>`).join('')}
+    </div>` : ''}
+
+    <!-- Services disponibles -->
+    <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Services disponibles & commandés</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      ${handlingData.services.map(s => `
+      <div style="background:var(--card);border-radius:8px;padding:10px 12px;border:1px solid ${s.available?(s.required?'var(--gold)':'var(--border)'):'#333'};opacity:${s.available?1:0.5}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+          <div style="font-size:11px;color:${s.available?'var(--text)':'var(--text2)'};font-weight:600">${s.name}</div>
+          <div style="font-size:14px">${s.available?(s.required?'✓':'○'):'✗'}</div>
+        </div>
+        <div style="font-size:10px;color:var(--text2)">${s.note||''}</div>
+        ${s.available&&s.toggleable?`<button onclick="toggleService(this,'${s.name}')" style="margin-top:6px;width:100%;background:${s.required?'var(--gold)':'var(--card2)'};color:${s.required?'#000':'var(--text2)'};border:1px solid ${s.required?'var(--gold)':'var(--border)'};border-radius:4px;padding:3px;cursor:pointer;font-size:10px">${s.required?'Commandé':'Commander'}</button>`:''}
+      </div>`).join('')}
+    </div>
+
+    <!-- Fuel avitaillement -->
+    <div style="background:var(--card);border-radius:9px;padding:14px 16px;border:1px solid var(--border);margin-bottom:12px">
+      <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:1px">⛽ AVITAILLEMENT CARBURANT</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+        <div>
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Type carburant</div>
+          <div style="font-size:13px;color:var(--text);font-weight:700">${handlingData.fuel_type}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Quantité à commander</div>
+          <div id="fuel-order-display" style="font-size:13px;color:var(--gold);font-weight:700;font-family:'JetBrains Mono',monospace">${fuel?(fuel.total+storedExtra).toLocaleString('fr-FR')+' kg':'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Prix estimé</div>
+          <div style="font-size:13px;color:var(--text2);font-weight:700">${handlingData.fuel_price||'Sur devis'}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);background:var(--card2);border-radius:6px;padding:8px 12px">
+        📋 La quantité d'avitaillement est automatiquement calculée depuis votre plan carburant. Ajustez le carburant additionnel dans l'onglet Carburant si nécessaire.
+      </div>
+    </div>
+
+    <!-- Nettoyage cabine -->
+    <div style="background:var(--card);border-radius:9px;padding:14px 16px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:1px">🧹 NETTOYAGE CABINE</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.6">
+        ${f.aircraft_id==='F-LIMB'
+          ? '✓ <strong style="color:var(--text)">BBJ2</strong> — Nettoyage cabine commandé auprès du FBO (équipage de nettoyage professionnel). Vérification vaisselle, literie, office. À commander 2h avant arrivée.'
+          : '✓ <strong style="color:var(--text)">Citation</strong> — Nettoyage cabine à la charge de l\'équipage. Checklist nettoyage disponible dans les documents. Prévoir 20-30 min après le vol.'
+        }
+      </div>
+    </div>
+  `;
 
   switchTab('general');
   document.getElementById('modal-overlay').classList.add('open');
+}
+
+
+// ── FUEL EXTRA ──
+function setFuelExtra(flightId, kg){
+  document.getElementById('fuel-extra').value = kg;
+  updateFuelTotal(flightId);
+}
+
+function updateFuelTotal(flightId){
+  const extra = parseInt(document.getElementById('fuel-extra').value)||0;
+  const f = currentFlight;
+  if(!f) return;
+  const ac = fleet.find(a=>a.id===f.aircraft_id);
+  const fuel = ac ? calcFuel(ac.id, f.distance_nm||300, ac.cruise_kt) : null;
+  if(!fuel) return;
+
+  // Save to localStorage
+  localStorage.setItem('fuel_extra_'+flightId, extra);
+
+  const total = fuel.total + extra;
+  const feasible = total <= fuel.capacity;
+
+  const totalEl = document.getElementById('fuel-total-display');
+  const feasEl = document.getElementById('fuel-feasibility-label');
+  const orderEl = document.getElementById('fuel-order-display');
+
+  if(totalEl) totalEl.textContent = total.toLocaleString('fr-FR') + ' kg';
+  if(orderEl) orderEl.textContent = total.toLocaleString('fr-FR') + ' kg';
+  if(feasEl){
+    if(!feasible){
+      feasEl.textContent = '⚠ Dépasse la capacité réservoirs !';
+      feasEl.style.color = 'var(--orange)';
+      totalEl.style.color = 'var(--orange)';
+    } else {
+      feasEl.textContent = '✓ Faisable — Marge : '+(fuel.capacity-total).toLocaleString('fr-FR')+' kg';
+      feasEl.style.color = 'var(--green)';
+      totalEl.style.color = 'var(--gold)';
+    }
+  }
+}
+
+function toggleService(btn, name){
+  const isOrdered = btn.textContent.trim() === 'Commandé';
+  btn.textContent = isOrdered ? 'Commander' : 'Commandé';
+  btn.style.background = isOrdered ? 'var(--card2)' : 'var(--gold)';
+  btn.style.color = isOrdered ? 'var(--text2)' : '#000';
+  btn.style.borderColor = isOrdered ? 'var(--border)' : 'var(--gold)';
+  showToast(isOrdered ? name+' retiré des services commandés' : name+' ajouté aux services commandés');
+}
+
+// ── HANDLING DATABASE ──
+function getHandlingData(icao, aircraftId, ac){
+  const isLarge = aircraftId === 'F-LIMB'; // BBJ2
+  const isMedium = aircraftId === 'F-EXZA'; // Longitude
+
+  const db_handling = {
+    'LFRS':{fbo:'Handling LFRS — Nantes Aviation',fbo_contact:'Tél: +33 2 40 84 80 00',parking:isLarge?'M-11':'M-07',parking_note:isLarge?'Parking BBJ — Grand gabarit':'Parking Citations — Zone affaires',fuel_type:'Jet A-1',fuel_price:'Sur contrat WABA',limitations:[],gpu:true,catering:true,gpu_note:'GPU disponible zone M'},
+    'LFRZ':{fbo:'Airbus Atlantic Handling',fbo_contact:'Tél: +33 2 40 13 50 00',parking:isLarge?'RAMP-1':'RAMP-3',parking_note:'Zone trafic principale',fuel_type:'Jet A-1',fuel_price:'Sur devis',limitations:['PPR requis 24h à l\'avance'],gpu:false,catering:false,gpu_note:'GPU non disponible — APU requis'},
+    'LFPB':{fbo:isLarge?'Jet Aviation Le Bourget':'Signature Aviation Le Bourget',fbo_contact:'Tél: +33 1 49 34 50 00',parking:isLarge?'HALL B — Stand 12':'HALL A — Stand 5',parking_note:isLarge?'Réservation obligatoire 48h':'Disponible sur demande',fuel_type:'Jet A-1',fuel_price:'~3.20€/L',limitations:['Couvre-feu 23h00-06h00 LT','PPR obligatoire BBJ','Slots ATC requis'],gpu:true,catering:true,gpu_note:'GPU disponible tous stands'},
+    'EGLF':{fbo:'Signature Aviation Farnborough',fbo_contact:'+44 1252 379000',parking:isLarge?'Stand 10-12':'Stand 1-5',parking_note:isLarge?'Large aircraft apron':'Business aviation apron',fuel_type:'Jet A-1',fuel_price:'~3.50£/L',limitations:['Night curfew 23:00-07:00 LT','Noise restrictions — QC2 max','PPR required all aircraft'],gpu:true,catering:true,gpu_note:'GPU available all stands'},
+    'LSZH':{fbo:'Jet Aviation Zurich',fbo_contact:'+41 43 816 20 00',parking:isLarge?'Charlie Apron':'Bravo Apron',parking_note:'Business aviation terminal',fuel_type:'Jet A-1',fuel_price:'~3.80 CHF/L',limitations:['Night curfew 22:30-06:00','Slot coordination required','Landing fees élevées'],gpu:true,catering:true,gpu_note:'GPU disponible'},
+    'LSGG':{fbo:'Jet Aviation Geneva',fbo_contact:'+41 22 717 83 83',parking:'Terminal aviation affaires',parking_note:'T2 Business',fuel_type:'Jet A-1',fuel_price:'Sur devis',limitations:['PPR recommandé','Trafic dense'],gpu:true,catering:true,gpu_note:'GPU disponible'},
+    'OMDB':{fbo:'Jet Aviation Dubai / DC Aviation Al Futtaim',fbo_contact:'+971 4 299 5000',parking:isLarge?'Terminal 2 South Apron':'GA Terminal',parking_note:isLarge?'VIP handling disponible':'Apron GA',fuel_type:'Jet A-1',fuel_price:'~2.80 AED/L',limitations:['Permis survol requis certains pays','Formalités douanières renforcées','Visa à l\'arrivée — vérifier passeports PAX'],gpu:true,catering:true,gpu_note:'GPU disponible 24h/24'},
+    'KTEB':{fbo:'Signature Aviation Teterboro',fbo_contact:'+1 201 288 5900',parking:isLarge?'South Ramp':'North Ramp',parking_note:'US Customs available on site',fuel_type:'Jet-A',fuel_price:'~8.50$/Gal',limitations:['APIS requis 60 min avant arrivée','US Customs — déclaration obligatoire','Restriction poids max 100 000 lbs MTOW'],gpu:true,catering:true,gpu_note:'GPU available all ramps'},
+    'LEMD':{fbo:'Iberia Airport Services / Aviapartner',fbo_contact:'+34 91 321 10 00',parking:'T4S Business Apron',parking_note:'Handling professionnel',fuel_type:'Jet A-1',fuel_price:'~3.10€/L',limitations:['Slot ATC requis','Handling 48h à l\'avance recommandé'],gpu:true,catering:true,gpu_note:'GPU disponible'},
+    'LIRA':{fbo:'Aeroporti di Roma — Ciampino Handling',fbo_contact:'+39 06 794 88 00',parking:'Apron Est — Biz Av',parking_note:'Zone aviation affaires',fuel_type:'Jet A-1',fuel_price:'~3.30€/L',limitations:['Couvre-feu 23h-06h','PPR obligatoire','Capacité limitée'],gpu:false,catering:true,gpu_note:'GPU non disponible — APU requis'},
+  };
+
+  const data = db_handling[icao] || {
+    fbo:'À confirmer — Contactez le handling local',
+    fbo_contact:'Renseignements via Avinode/Universal Weather',
+    parking:'À confirmer selon disponibilité',
+    parking_note:'Vérifiez avec le handling local',
+    fuel_type:'Jet A-1',
+    fuel_price:'Sur devis local',
+    limitations:['Vérifiez les restrictions locales avant le vol','Contactez le handling 24h à l\'avance'],
+    gpu: null,
+    catering: null,
+    gpu_note:'Disponibilité à confirmer',
+  };
+
+  // Build services list
+  const services = [
+    {name:'Avitaillement Jet A-1', available:true, required:true, toggleable:false, note:'Quantité calculée auto'},
+    {name:'GPU (Groupe électrogène)', available:data.gpu===true, required:false, toggleable:data.gpu===true, note:data.gpu_note||''},
+    {name:'Eau potable', available:true, required:false, toggleable:true, note:'À commander'},
+    {name:'Vidange eaux usées', available:true, required:false, toggleable:true, note:'Selon besoins'},
+    {name:'Catering à bord', available:data.catering===true, required:false, toggleable:data.catering===true, note:isLarge?'Chef de bord — menu sur mesure':'Plateau repas selon commande'},
+    {name:'Nettoyage cabine', available:isLarge, required:isLarge, toggleable:false, note:isLarge?'FBO — équipe dédiée':'Équipage (Citations)'},
+    {name:'Transport PAX (limousine)', available:true, required:false, toggleable:true, note:'Sur demande — 48h à l\'avance'},
+    {name:'Salle VIP', available:data.gpu!==null, required:false, toggleable:true, note:'Disponibilité selon FBO'},
+    {name:'WiFi au sol', available:true, required:false, toggleable:true, note:'Disponible dans terminal'},
+  ];
+
+  return {...data, services};
 }
 
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');currentFlight=null;}
