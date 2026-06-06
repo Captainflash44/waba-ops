@@ -70,8 +70,9 @@ nav{flex:1;padding:10px 8px;overflow-y:auto;}
 #modal-overlay.open{display:flex;}
 #modal{background:#0a0f1e;border:1.5px solid var(--border);border-radius:16px;width:100%;max-width:900px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;}
 .modal-header{background:var(--card);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
-.modal-tabs{display:flex;gap:1px;padding:8px 22px 0;border-bottom:1px solid var(--border);background:var(--card);overflow-x:auto;}
-.modal-tab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);padding:7px 13px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;}
+.modal-tabs{display:flex;gap:1px;padding:8px 22px 0;border-bottom:1px solid var(--border);background:var(--card);overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;}
+.modal-tabs::-webkit-scrollbar{display:none;}
+.modal-tab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);padding:7px 11px;cursor:pointer;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;}
 .modal-tab.active{color:var(--gold);border-bottom-color:var(--gold);background:#C8A96E22;}
 .modal-body{overflow-y:auto;padding:22px;flex:1;}
 .tab-content{display:none;}
@@ -296,7 +297,7 @@ nav{flex:1;padding:10px 8px;overflow-y:auto;}
       <button class="modal-tab" onclick="switchTab('wx')">Météo</button>
       <button class="modal-tab" onclick="switchTab('notam')">NOTAM</button>
       <button class="modal-tab" onclick="switchTab('fuel')">Carburant</button>
-      <button class="modal-tab" onclick="switchTab('handling')">Services au sol</button>
+      <button class="modal-tab" onclick="switchTab('handling')">Sol</button>
     </div>
     <div class="modal-body">
       <div class="tab-content active" id="tab-general"></div>
@@ -1306,97 +1307,148 @@ function openBriefing(fid){
   ` : `<div style="text-align:center;padding:30px;color:var(--text2)">Données carburant non disponibles</div>`;
 
   // ── HANDLING TAB ──
-  const handlingData = getHandlingData(f.destination, f.aircraft_id, ac);
-  document.getElementById('tab-handling').innerHTML = `
-    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">Services au sol — ${f.destination}</div>
+  const handlingDep = getHandlingData(f.origin, f.aircraft_id, ac);
+  const handlingArr = getHandlingData(f.destination, f.aircraft_id, ac);
+  const fuelKey2 = 'fuel_extra_' + f.id;
+  const storedExtra2 = parseInt(localStorage.getItem(fuelKey2)||'0');
+  const totalFuel = fuel ? fuel.total + storedExtra2 : 0;
+  const fuelCostPerKg = ['EGLF','KTEB','OMDB','LSZH'].includes(f.destination) ? 1.35 : 0.98;
+  const fuelCostEur = Math.round(totalFuel * fuelCostPerKg);
 
-    <!-- FBO & Parking -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-      <div style="background:var(--card);border-radius:9px;padding:14px 16px;border:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">FBO / Handling</div>
-        <div style="font-size:15px;color:var(--text);font-weight:700;margin-bottom:4px">${handlingData.fbo}</div>
-        <div style="font-size:11px;color:var(--text2)">${handlingData.fbo_contact||'Contact à confirmer'}</div>
+  // Calculate totals
+  const depRequiredCost = handlingDep.services.filter(s=>s.required&&s.price_estimate&&s.price_estimate>0).reduce((a,s)=>a+(s.price_estimate||0),0);
+  const arrRequiredCost = handlingArr.services.filter(s=>s.required&&s.price_estimate&&s.price_estimate>0).reduce((a,s)=>a+(s.price_estimate||0),0);
+  const totalEstimate = fuelCostEur + depRequiredCost + arrRequiredCost;
+
+  document.getElementById('tab-handling').innerHTML = `
+    <!-- Résumé coût vol -->
+    <div style="background:#C8A96E11;border:1px solid #C8A96E33;border-radius:9px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:10px;letter-spacing:1px">💰 COÛT ESTIMÉ DU VOL</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">
+        <div style="background:var(--card2);border-radius:7px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Carburant</div>
+          <div style="font-size:15px;font-weight:800;color:var(--gold);font-family:'JetBrains Mono',monospace">~${fuelCostEur.toLocaleString('fr-FR')}€</div>
+          <div style="font-size:9px;color:var(--text3)">${totalFuel.toLocaleString('fr-FR')} kg × ${fuelCostPerKg}€/kg</div>
+        </div>
+        <div style="background:var(--card2);border-radius:7px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services départ</div>
+          <div style="font-size:15px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace" id="dep-cost-display">~${depRequiredCost.toLocaleString('fr-FR')}€</div>
+          <div style="font-size:9px;color:var(--text3)">Services obligatoires</div>
+        </div>
+        <div style="background:var(--card2);border-radius:7px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services arrivée</div>
+          <div style="font-size:15px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace" id="arr-cost-display">~${arrRequiredCost.toLocaleString('fr-FR')}€</div>
+          <div style="font-size:9px;color:var(--text3)">Services obligatoires</div>
+        </div>
+        <div style="background:var(--card);border-radius:7px;padding:10px;text-align:center;border:1px solid var(--gold)">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Total estimé</div>
+          <div style="font-size:15px;font-weight:800;color:var(--gold);font-family:'JetBrains Mono',monospace" id="total-cost-display">~${totalEstimate.toLocaleString('fr-FR')}€</div>
+          <div style="font-size:9px;color:var(--text3)">Hors taxes aéroportuaires</div>
+        </div>
       </div>
-      <div style="background:var(--card);border-radius:9px;padding:14px 16px;border:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Parking recommandé</div>
-        <div style="font-size:15px;color:var(--blue);font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:4px">${handlingData.parking}</div>
-        <div style="font-size:11px;color:var(--text2)">${handlingData.parking_note||'—'}</div>
+      <div style="font-size:10px;color:var(--text3)">⚠ Estimations indicatives — prix réels à confirmer avec le FBO · Hors redevances aéroportuaires et taxes</div>
+    </div>
+
+    <!-- DÉPART -->
+    <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:1px;display:flex;align-items:center;gap:8px">
+      <div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div>
+      DÉPART — ${f.origin}
+    </div>
+
+    <!-- FBO Départ -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="background:var(--card);border-radius:8px;padding:12px 14px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">FBO / Handling départ</div>
+        <div style="font-size:13px;color:var(--text);font-weight:700;margin-bottom:3px">${handlingDep.fbo}</div>
+        <div style="font-size:10px;color:var(--text2)">${handlingDep.fbo_contact||'Contact à confirmer'}</div>
+      </div>
+      <div style="background:var(--card);border-radius:8px;padding:12px 14px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Parking départ</div>
+        <div style="font-size:13px;color:var(--blue);font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:3px">${handlingDep.parking}</div>
+        <div style="font-size:10px;color:var(--text2)">${handlingDep.parking_note||'—'}</div>
       </div>
     </div>
 
-    <!-- Limitations -->
-    ${handlingData.limitations.length > 0 ? `
-    <div style="background:#E8A87C11;border:1px solid #E8A87C44;border-radius:9px;padding:12px 16px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:800;color:var(--orange);margin-bottom:8px">⚠ LIMITATIONS & CONTRAINTES</div>
-      ${handlingData.limitations.map(l=>`<div style="font-size:11px;color:var(--text);margin-bottom:4px">· ${l}</div>`).join('')}
-    </div>` : ''}
-
-    <!-- Services disponibles -->
-    <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Services disponibles & commandés</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      ${handlingData.services.map(s => `
-      <div style="background:var(--card);border-radius:8px;padding:10px 12px;border:1px solid ${s.available?(s.required?'var(--gold)':'var(--border)'):'#333'};opacity:${s.available?1:0.5}">
+    <!-- Services départ -->
+    <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Services au départ</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:16px">
+      ${handlingDep.services.filter(s=>['Avitaillement Jet A-1','GPU (Groupe electrogene)','Catering a bord','Degivrage / Anti-icing','WiFi au sol'].includes(s.name)).map(s=>`
+      <div style="background:var(--card);border-radius:7px;padding:9px 11px;border:1px solid ${s.available?(s.required?'var(--gold)':'var(--border)'):'#2a2a2a'};opacity:${s.available?1:0.45}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
-          <div style="font-size:11px;color:${s.available?'var(--text)':'var(--text2)'};font-weight:600">${s.name}</div>
-          <div style="font-size:14px">${s.available?(s.required?'✓':'○'):'✗'}</div>
+          <div style="font-size:10px;color:${s.available?'var(--text)':'var(--text2)'};font-weight:600;line-height:1.3">${s.name}</div>
+          <div style="font-size:12px;margin-left:4px">${s.available?(s.required?'✓':'○'):'✗'}</div>
         </div>
-        <div style="font-size:10px;color:var(--text2);margin-bottom:4px">${s.note||''}</div>
-        ${(s.price_estimate!==null&&s.price_estimate!==undefined)?`
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <div style="font-size:9px;color:var(--text2);margin-bottom:5px">${s.note||''}</div>
+        ${s.price_estimate!==null&&s.price_estimate!==undefined?`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <div style="font-size:9px;color:var(--text3)">${s.price_note||''}</div>
-          <div style="font-size:11px;font-weight:700;color:${s.price_estimate===0?'var(--green)':'var(--gold)'}">
-            ${s.price_estimate===0?'Inclus':('~'+(s.price_estimate||0).toLocaleString('fr-FR')+'€')}
+          <div style="font-size:10px;font-weight:700;color:${s.price_estimate===0?'var(--green)':'var(--gold)'}">
+            ${s.price_estimate===0?'Inclus':'~'+(s.price_estimate||0).toLocaleString('fr-FR')+'€'}
           </div>
         </div>`:''}
-        ${s.available&&s.toggleable?`<button onclick="toggleService(this,'${s.name}',${s.price_estimate||0})" style="width:100%;background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:4px;padding:4px;cursor:pointer;font-size:10px">Commander</button>`:''}
-        ${s.required&&!s.toggleable?`<div style="font-size:10px;color:var(--gold);margin-top:4px;font-weight:700">✓ Commandé automatiquement</div>`:''}
+        ${s.available&&s.toggleable?`<button onclick="toggleServiceCost(this,'${s.name}',${s.price_estimate||0},'dep')" style="width:100%;background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:4px;padding:3px;cursor:pointer;font-size:9px">Commander</button>`:''}
+        ${s.required&&!s.toggleable?`<div style="font-size:9px;color:var(--gold);font-weight:700">✓ Inclus automatiquement</div>`:''}
       </div>`).join('')}
     </div>
 
-    <!-- Total estimé services -->
-    <div style="background:var(--card);border-radius:9px;padding:12px 16px;border:1px solid var(--border);margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-size:11px;font-weight:800;color:var(--text);letter-spacing:1px">COÛT ESTIMÉ SERVICES AU SOL</div>
-          <div style="font-size:10px;color:var(--text2);margin-top:2px">Hors avitaillement carburant · Estimation indicative</div>
-        </div>
-        <div id="services-total" style="font-size:20px;font-weight:900;color:var(--gold);font-family:'JetBrains Mono',monospace">
-          ~${handlingData.services.filter(s=>s.required&&s.price_estimate&&s.price_estimate>0).reduce((a,s)=>a+(s.price_estimate||0),0).toLocaleString('fr-FR')}€
-        </div>
-      </div>
-    </div>
-    <div style="display:none"><!-- placeholder -->
+    <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
+
+    <!-- ARRIVÉE -->
+    <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:1px;display:flex;align-items:center;gap:8px">
+      <div style="width:6px;height:6px;border-radius:50%;background:var(--gold)"></div>
+      ARRIVÉE — ${f.destination}
     </div>
 
-    <!-- Fuel avitaillement -->
-    <div style="background:var(--card);border-radius:9px;padding:14px 16px;border:1px solid var(--border);margin-bottom:12px">
-      <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:1px">⛽ AVITAILLEMENT CARBURANT</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
-        <div>
-          <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Type carburant</div>
-          <div style="font-size:13px;color:var(--text);font-weight:700">${handlingData.fuel_type}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Quantité à commander</div>
-          <div id="fuel-order-display" style="font-size:13px;color:var(--gold);font-weight:700;font-family:'JetBrains Mono',monospace">${fuel?(fuel.total+storedExtra).toLocaleString('fr-FR')+' kg':'—'}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Prix estimé</div>
-          <div style="font-size:13px;color:var(--text2);font-weight:700">${handlingData.fuel_price||'Sur devis'}</div>
-        </div>
+    <!-- FBO Arrivée -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="background:var(--card);border-radius:8px;padding:12px 14px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">FBO / Handling arrivée</div>
+        <div style="font-size:13px;color:var(--text);font-weight:700;margin-bottom:3px">${handlingArr.fbo}</div>
+        <div style="font-size:10px;color:var(--text2)">${handlingArr.fbo_contact||'Contact à confirmer'}</div>
       </div>
-      <div style="font-size:11px;color:var(--text2);background:var(--card2);border-radius:6px;padding:8px 12px">
-        📋 La quantité d'avitaillement est automatiquement calculée depuis votre plan carburant. Ajustez le carburant additionnel dans l'onglet Carburant si nécessaire.
+      <div style="background:var(--card);border-radius:8px;padding:12px 14px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Parking arrivée</div>
+        <div style="font-size:13px;color:var(--blue);font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:3px">${handlingArr.parking}</div>
+        <div style="font-size:10px;color:var(--text2)">${handlingArr.parking_note||'—'}</div>
       </div>
+    </div>
+
+    <!-- Limitations arrivée -->
+    ${handlingArr.limitations&&handlingArr.limitations.length>0?`
+    <div style="background:#E8A87C11;border:1px solid #E8A87C44;border-radius:8px;padding:11px 14px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:7px">⚠ LIMITATIONS À DESTINATION</div>
+      ${handlingArr.limitations.map(l=>`<div style="font-size:11px;color:var(--text);margin-bottom:3px">· ${l}</div>`).join('')}
+    </div>`:''}
+
+    <!-- Services arrivée -->
+    <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Services à l'arrivée</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px">
+      ${handlingArr.services.filter(s=>!['Avitaillement Jet A-1','Degivrage / Anti-icing'].includes(s.name)).map(s=>`
+      <div style="background:var(--card);border-radius:7px;padding:9px 11px;border:1px solid ${s.available?(s.required?'var(--gold)':'var(--border)'):'#2a2a2a'};opacity:${s.available?1:0.45}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
+          <div style="font-size:10px;color:${s.available?'var(--text)':'var(--text2)'};font-weight:600;line-height:1.3">${s.name}</div>
+          <div style="font-size:12px;margin-left:4px">${s.available?(s.required?'✓':'○'):'✗'}</div>
+        </div>
+        <div style="font-size:9px;color:var(--text2);margin-bottom:5px">${s.note||''}</div>
+        ${s.price_estimate!==null&&s.price_estimate!==undefined?`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:9px;color:var(--text3)">${s.price_note||''}</div>
+          <div style="font-size:10px;font-weight:700;color:${s.price_estimate===0?'var(--green)':'var(--gold)'}">
+            ${s.price_estimate===0?'Inclus':'~'+(s.price_estimate||0).toLocaleString('fr-FR')+'€'}
+          </div>
+        </div>`:''}
+        ${s.available&&s.toggleable?`<button onclick="toggleServiceCost(this,'${s.name}',${s.price_estimate||0},'arr')" style="width:100%;background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:4px;padding:3px;cursor:pointer;font-size:9px">Commander</button>`:''}
+        ${s.required&&!s.toggleable?`<div style="font-size:9px;color:var(--gold);font-weight:700">✓ Inclus automatiquement</div>`:''}
+      </div>`).join('')}
     </div>
 
     <!-- Nettoyage cabine -->
-    <div style="background:var(--card);border-radius:9px;padding:14px 16px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:1px">🧹 NETTOYAGE CABINE</div>
+    <div style="background:var(--card);border-radius:8px;padding:12px 14px;border:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;color:var(--text);margin-bottom:6px;letter-spacing:1px">🧹 NETTOYAGE CABINE</div>
       <div style="font-size:11px;color:var(--text2);line-height:1.6">
         ${f.aircraft_id==='F-LIMB'
-          ? '✓ <strong style="color:var(--text)">BBJ2</strong> — Nettoyage cabine commandé auprès du FBO (équipage de nettoyage professionnel). Vérification vaisselle, literie, office. À commander 2h avant arrivée.'
-          : '✓ <strong style="color:var(--text)">Citation</strong> — Nettoyage cabine à la charge de l\'équipage. Checklist nettoyage disponible dans les documents. Prévoir 20-30 min après le vol.'
+          ?'✓ <strong style="color:var(--text)">BBJ2</strong> — Nettoyage commandé auprès du FBO à destination. Équipe dédiée, vaisselle, literie. À confirmer 2h avant arrivée.'
+          :'✓ <strong style="color:var(--text)">Citations</strong> — Nettoyage à la charge de l\'équipage. Checklist nettoyage dans les documents. Prévoir 20-30 min après le vol.'
         }
       </div>
     </div>
@@ -1446,18 +1498,23 @@ function updateFuelTotal(flightId){
   }
 }
 
-let orderedServicesTotal = 0;
-function toggleService(btn, name, price){
+let depExtra = 0, arrExtra = 0;
+function toggleServiceCost(btn, name, price, side){
   const isOrdered = btn.textContent.trim() === 'Commandé';
   btn.textContent = isOrdered ? 'Commander' : 'Commandé';
   btn.style.background = isOrdered ? 'var(--card2)' : 'var(--gold)';
   btn.style.color = isOrdered ? 'var(--text2)' : '#000';
   btn.style.borderColor = isOrdered ? 'var(--border)' : 'var(--gold)';
-  // Update total
-  orderedServicesTotal += isOrdered ? -(price||0) : (price||0);
-  const totalEl = document.getElementById('services-total');
-  if(totalEl) totalEl.textContent = '~'+orderedServicesTotal.toLocaleString('fr-FR')+'€';
-  showToast(isOrdered ? name+' retiré — '+(-price||0)+'€' : name+' commandé — +'+( price||0)+'€');
+  if(side==='dep') depExtra += isOrdered ? -(price||0) : (price||0);
+  else arrExtra += isOrdered ? -(price||0) : (price||0);
+  // Update displays
+  const depEl = document.getElementById('dep-cost-display');
+  const arrEl = document.getElementById('arr-cost-display');
+  const totEl = document.getElementById('total-cost-display');
+  const fuelCost = parseInt(document.getElementById('fuel-order-display')?.textContent?.replace(/[^0-9]/g,'')||'0');
+  if(depEl) depEl.textContent = '~'+(parseInt(depEl.textContent.replace(/[^0-9]/g,''))+( isOrdered?-(price||0):(price||0))).toLocaleString('fr-FR')+'€';
+  if(arrEl) arrEl.textContent = '~'+(parseInt(arrEl.textContent.replace(/[^0-9]/g,''))+( isOrdered?-(price||0):(price||0))).toLocaleString('fr-FR')+'€';
+  showToast(isOrdered ? name+' retiré' : name+' commandé — +'+( price||0)+'€');
 }
 
 // ── HANDLING DATABASE ──
