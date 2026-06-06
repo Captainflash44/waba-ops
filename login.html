@@ -89,10 +89,6 @@ select.form-input{cursor:pointer;appearance:none;}
       <input class="form-input" type="text" id="reg-name" placeholder="Thomas Leroux"/>
     </div>
     <div class="form-group">
-      <label class="form-label">Pseudo MSFS</label>
-      <input class="form-input" type="text" id="reg-msfs" placeholder="ThomasLeroux_LFRS"/>
-    </div>
-    <div class="form-group">
       <label class="form-label">Adresse email</label>
       <input class="form-input" type="email" id="reg-email" placeholder="votre@email.com"/>
     </div>
@@ -101,19 +97,30 @@ select.form-input{cursor:pointer;appearance:none;}
       <input class="form-input" type="password" id="reg-password" placeholder="8 caractères minimum"/>
     </div>
     <div class="form-group">
-      <label class="form-label">Rôle souhaité</label>
-      <select class="form-input" id="reg-role">
-        <option value="PILOTE">Pilote</option>
-        <option value="OSV">Officier Sécurité des Vols</option>
-        <option value="DISPATCH">Dispatch / CAMO</option>
-      </select>
-      <div class="role-info" id="role-info">
-        <strong>Pilote</strong> — Accès à vos rotations, briefings, carnet de route et REX.
+      <label class="form-label">ID SimBrief</label>
+      <input class="form-input" type="text" id="reg-simbrief" placeholder="ex: 553724"/>
+      <div class="role-info">
+        Votre ID SimBrief se trouve sur <strong>simbrief.com → Account → Pilot ID</strong>. Il permettra de charger automatiquement vos plans de vol.
       </div>
     </div>
-    <button class="btn-submit" onclick="register()" id="reg-btn">Créer mon compte</button>
-    <div style="font-size:11px;color:var(--text2);margin-top:12px;text-align:center">
-      Votre compte sera activé après validation par l'administration WABA.
+    <div class="form-group">
+      <label class="form-label">Qualification type (QT) souhaitée</label>
+      <select class="form-input" id="reg-qt">
+        <option value="C750">Citation X — C750</option>
+        <option value="C700">Citation Longitude — C700</option>
+        <option value="B738">Boeing BBJ2 — B738</option>
+      </select>
+      <div class="role-info">
+        La QT sera attribuée après validation par l'administration suite à un test sur l'appareil. Vous pouvez candidater à plusieurs QT ultérieurement.
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Pourquoi souhaitez-vous rejoindre West Atlantic Business Aviation ?</label>
+      <textarea class="form-input" id="reg-motivation" rows="4" placeholder="Parlez-nous de votre expérience sur MSFS, vos motivations, ce que vous souhaitez apporter à la compagnie..."></textarea>
+    </div>
+    <button class="btn-submit" onclick="register()" id="reg-btn">Soumettre ma candidature</button>
+    <div style="font-size:11px;color:var(--text2);margin-top:12px;text-align:center;line-height:1.6">
+      Votre candidature sera examinée par l'administration WABA.<br>Vous serez contacté par email après validation.
     </div>
   </div>
 
@@ -227,15 +234,7 @@ async function register(){
   btn.disabled=false;btn.textContent='Créer mon compte';
 }
 
-// Afficher info selon le rôle sélectionné
-document.getElementById('reg-role')?.addEventListener('change',function(){
-  const infos={
-    PILOTE:'<strong>Pilote</strong> — Accès à vos rotations, briefings, carnet de route et REX.',
-    OSV:'<strong>Officier Sécurité des Vols</strong> — Révision des PIREPs, actions correctives, publication REX.',
-    DISPATCH:'<strong>Dispatch / CAMO</strong> — Planning, suivi flotte, maintenance. Nécessite validation admin.',
-  };
-  document.getElementById('role-info').innerHTML=infos[this.value]||'';
-});
+
 
 // Enter key support
 document.addEventListener('keypress',function(e){
