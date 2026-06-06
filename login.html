@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WABA — Connexion</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#080808;
+  --card:#111111;
+  --border:#1e1e1e;
+  --text:#e8e4df;
+  --text2:#6b6b6b;
+  --gold:#C8A96E;
+  --green:#A8D5A2;
+  --red:#E8A87C;
+}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+
+.logo{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;color:var(--text);letter-spacing:12px;margin-bottom:8px;text-align:center;}
+.logo-sub{font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--text2);margin-bottom:48px;text-align:center;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:420px;}
+
+.tabs{display:flex;gap:0;margin-bottom:32px;border-bottom:1px solid var(--border);}
+.tab{flex:1;padding:10px;text-align:center;cursor:pointer;font-size:12px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--text2);border-bottom:2px solid transparent;transition:all .2s;}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+.form-group{margin-bottom:20px;}
+.form-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text2);display:block;margin-bottom:8px;}
+.form-input{width:100%;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border .2s;}
+.form-input:focus{border-color:var(--gold);}
+.form-input::placeholder{color:#333;}
+
+select.form-input{cursor:pointer;appearance:none;}
+
+.btn-submit{width:100%;background:var(--gold);border:none;border-radius:8px;padding:14px;color:#000;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:8px;}
+.btn-submit:hover{background:#d4b57a;}
+.btn-submit:disabled{background:#333;color:#666;cursor:not-allowed;}
+
+.message{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;}
+.message.error{background:#E8A87C22;border:1px solid var(--red);color:var(--red);}
+.message.success{background:#A8D5A222;border:1px solid var(--green);color:var(--green);}
+
+.divider{display:flex;align-items:center;gap:12px;margin:24px 0;}
+.divider-line{flex:1;height:1px;background:var(--border);}
+.divider-text{font-size:10px;color:var(--text2);letter-spacing:2px;}
+
+.back-link{margin-top:24px;text-align:center;font-size:11px;color:var(--text2);}
+.back-link a{color:var(--gold);text-decoration:none;}
+
+.role-info{background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-top:12px;font-size:11px;color:var(--text2);line-height:1.6;}
+.role-info strong{color:var(--text);}
+</style>
+</head>
+<body>
+
+<div class="logo">WABA</div>
+<div class="logo-sub">West Atlantic Business Aviation</div>
+
+<div class="card">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('login')">Connexion</div>
+    <div class="tab" onclick="switchTab('register')">Inscription</div>
+  </div>
+
+  <div id="message" class="message"></div>
+
+  <!-- CONNEXION -->
+  <div id="form-login">
+    <div class="form-group">
+      <label class="form-label">Adresse email</label>
+      <input class="form-input" type="email" id="login-email" placeholder="votre@email.com" autocomplete="email"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="btn-submit" onclick="login()" id="login-btn">Se connecter</button>
+  </div>
+
+  <!-- INSCRIPTION -->
+  <div id="form-register" style="display:none">
+    <div class="form-group">
+      <label class="form-label">Prénom & Nom</label>
+      <input class="form-input" type="text" id="reg-name" placeholder="Thomas Leroux"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Pseudo MSFS</label>
+      <input class="form-input" type="text" id="reg-msfs" placeholder="ThomasLeroux_LFRS"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Adresse email</label>
+      <input class="form-input" type="email" id="reg-email" placeholder="votre@email.com"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input class="form-input" type="password" id="reg-password" placeholder="8 caractères minimum"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Rôle souhaité</label>
+      <select class="form-input" id="reg-role">
+        <option value="PILOTE">Pilote</option>
+        <option value="OSV">Officier Sécurité des Vols</option>
+        <option value="DISPATCH">Dispatch / CAMO</option>
+      </select>
+      <div class="role-info" id="role-info">
+        <strong>Pilote</strong> — Accès à vos rotations, briefings, carnet de route et REX.
+      </div>
+    </div>
+    <button class="btn-submit" onclick="register()" id="reg-btn">Créer mon compte</button>
+    <div style="font-size:11px;color:var(--text2);margin-top:12px;text-align:center">
+      Votre compte sera activé après validation par l'administration WABA.
+    </div>
+  </div>
+
+</div>
+
+<div class="back-link">
+  <a href="/">← Retour au site</a>
+</div>
+
+<script>
+const SUPABASE_URL='https://ncawfnwgihmebztfrekg.supabase.co';
+const SUPABASE_KEY='sb_publishable_cF4czohNpkG2Nb4nYz45Ug_4JglChlU';
+const {createClient}=supabase;
+const db=createClient(SUPABASE_URL,SUPABASE_KEY);
+
+// Vérifier si déjà connecté
+db.auth.getSession().then(({data:{session}})=>{
+  if(session) redirectAfterLogin(session.user);
+});
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`.tab:${tab==='login'?'first':'last'}-child`).classList.add('active');
+  document.getElementById('form-login').style.display=tab==='login'?'block':'none';
+  document.getElementById('form-register').style.display=tab==='register'?'block':'none';
+  hideMessage();
+}
+
+function showMessage(msg,type='error'){
+  const el=document.getElementById('message');
+  el.textContent=msg;
+  el.className='message '+type;
+  el.style.display='block';
+}
+function hideMessage(){ document.getElementById('message').style.display='none'; }
+
+async function login(){
+  const email=document.getElementById('login-email').value.trim();
+  const password=document.getElementById('login-password').value;
+  if(!email||!password){showMessage('Veuillez remplir tous les champs.');return;}
+  
+  const btn=document.getElementById('login-btn');
+  btn.disabled=true;btn.textContent='Connexion en cours…';
+
+  const{data,error}=await db.auth.signInWithPassword({email,password});
+  if(error){
+    showMessage('Email ou mot de passe incorrect.');
+    btn.disabled=false;btn.textContent='Se connecter';
+    return;
+  }
+  showMessage('Connexion réussie ! Redirection…','success');
+  setTimeout(()=>redirectAfterLogin(data.user),1000);
+}
+
+async function redirectAfterLogin(user){
+  // Récupérer le profil pilote et son rôle
+  const{data:pilot}=await db.from('pilots').select('*').eq('user_id',user.id).single();
+  if(!pilot){
+    // Profil pas encore créé ou pas encore validé
+    showMessage('Votre compte est en attente de validation par l\'administration.');
+    await db.auth.signOut();
+    return;
+  }
+  const role=pilot.role||'PILOTE';
+  // Rediriger selon le rôle
+  if(role==='ADMIN'||role==='DISPATCH'){
+    window.location.href='waba-ops-v3.html';
+  } else {
+    window.location.href='waba-pilot.html';
+  }
+}
+
+async function register(){
+  const name=document.getElementById('reg-name').value.trim();
+  const msfs=document.getElementById('reg-msfs').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const password=document.getElementById('reg-password').value;
+  const role=document.getElementById('reg-role').value;
+
+  if(!name||!email||!password||!msfs){showMessage('Veuillez remplir tous les champs.');return;}
+  if(password.length<8){showMessage('Le mot de passe doit faire au moins 8 caractères.');return;}
+
+  const btn=document.getElementById('reg-btn');
+  btn.disabled=true;btn.textContent='Création en cours…';
+
+  const{data,error}=await db.auth.signUp({email,password,options:{
+    data:{name,msfs_pseudo:msfs,role,status:'PENDING'}
+  }});
+
+  if(error){
+    showMessage('Erreur : '+error.message);
+    btn.disabled=false;btn.textContent='Créer mon compte';
+    return;
+  }
+
+  // Créer une entrée dans pilots avec statut PENDING
+  await db.from('pilots').insert({
+    id:'P_'+Date.now(),
+    name,
+    rank:'FO', // Par défaut, l'admin peut changer
+    role,
+    base:'LFRS',
+    total_hours:0,
+    ratings:[],
+    email,
+    user_id:data.user?.id,
+    status:'PENDING',
+  });
+
+  showMessage('Compte créé ! Vous recevrez un email de confirmation une fois votre profil validé par l\'administration.','success');
+  btn.disabled=false;btn.textContent='Créer mon compte';
+}
+
+// Afficher info selon le rôle sélectionné
+document.getElementById('reg-role')?.addEventListener('change',function(){
+  const infos={
+    PILOTE:'<strong>Pilote</strong> — Accès à vos rotations, briefings, carnet de route et REX.',
+    OSV:'<strong>Officier Sécurité des Vols</strong> — Révision des PIREPs, actions correctives, publication REX.',
+    DISPATCH:'<strong>Dispatch / CAMO</strong> — Planning, suivi flotte, maintenance. Nécessite validation admin.',
+  };
+  document.getElementById('role-info').innerHTML=infos[this.value]||'';
+});
+
+// Enter key support
+document.addEventListener('keypress',function(e){
+  if(e.key==='Enter'){
+    if(document.getElementById('form-login').style.display!=='none') login();
+    else register();
+  }
+});
+</script>
+</body>
+</html>
