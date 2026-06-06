@@ -345,25 +345,62 @@ function calcFuel(acId,dist_nm,cruise_kt){
 // ─────────────────────────────────────────────
 // REALISTIC BIZ AV AIRPORTS
 // ─────────────────────────────────────────────
-const AIRPORTS={
-  LFRS:{name:'Nantes Atlantique',city:'Nantes',lat:47.1569,lon:-1.6078},
-  LFRE:{name:'Saint-Nazaire Montoir',city:'Saint-Nazaire',lat:47.3122,lon:-2.1564},
-  LFRN:{name:'Rennes Saint-Jacques',city:'Rennes',lat:48.0694,lon:-1.7347},
-  LFPB:{name:'Paris Le Bourget',city:'Paris',lat:48.9694,lon:2.4414},
-  EGLF:{name:'Farnborough',city:'Londres',lat:51.2778,lon:-0.7764},
-  EGKB:{name:'Biggin Hill',city:'Londres Sud',lat:51.3311,lon:0.0325},
-  LSZH:{name:'Zurich',city:'Zurich',lat:47.4647,lon:8.5492},
-  LEMD:{name:'Madrid Barajas',city:'Madrid',lat:40.4936,lon:-3.5668},
-  LIRA:{name:'Rome Ciampino',city:'Rome',lat:41.7994,lon:12.5949},
-  OMDB:{name:'Dubai International',city:'Dubai',lat:25.2528,lon:55.3644},
-  KTEB:{name:'Teterboro',city:'New York',lat:40.8501,lon:-74.0608},
-  LFBO:{name:'Toulouse Blagnac',city:'Toulouse',lat:43.6293,lon:1.3638},
-  LEBB:{name:'Bilbao',city:'Bilbao',lat:43.3011,lon:-2.9106},
-  LFML:{name:'Marseille Provence',city:'Marseille',lat:43.4393,lon:5.2214},
-  LSGG:{name:'Genève Cointrin',city:'Genève',lat:46.2381,lon:6.1089},
-  EDDB:{name:'Berlin Brandenburg',city:'Berlin',lat:52.3667,lon:13.5033},
-  LHBP:{name:'Budapest',city:'Budapest',lat:47.4369,lon:19.2556},
-};
+// ─────────────────────────────────────────────
+// AIRPORTS — Cache local + recherche Supabase
+// ─────────────────────────────────────────────
+// Cache local pour les aéroports fréquemment utilisés
+const AIRPORTS_CACHE = {};
+
+// Fonction pour récupérer un aéroport depuis Supabase
+async function getAirport(icao) {
+  if(AIRPORTS_CACHE[icao]) return AIRPORTS_CACHE[icao];
+  const {data, error} = await db.from('airports').select('*').eq('icao', icao).single();
+  if(data && !error) {
+    AIRPORTS_CACHE[icao] = data;
+    return data;
+  }
+  return null;
+}
+
+// Recherche d'aéroports par code OACI ou ville
+async function searchAirports(query, limit=8) {
+  if(!query || query.length < 2) return [];
+  const q = query.toUpperCase().trim();
+  // Recherche par ICAO d'abord, puis par ville/nom
+  const {data: byIcao} = await db.from('airports')
+    .select('*')
+    .ilike('icao', q+'%')
+    .limit(4);
+  const {data: byCity} = await db.from('airports')
+    .select('*')
+    .or(`city.ilike.%${query}%,name.ilike.%${query}%`)
+    .limit(6);
+  // Merge et déduplique
+  const all = [...(byIcao||[]), ...(byCity||[])];
+  const seen = new Set();
+  return all.filter(a => {
+    if(seen.has(a.icao)) return false;
+    seen.add(a.icao);
+    return true;
+  }).slice(0, limit);
+}
+
+// Compatibilité avec l'ancien code qui utilise AIRPORTS[icao]
+const AIRPORTS = new Proxy(AIRPORTS_CACHE, {
+  get(target, icao) {
+    return target[icao] || null;
+  }
+});
+
+// Précharger les aéroports principaux au démarrage
+async function preloadAirports() {
+  const mainIcaos = ['LFRS','LFRZ','LFRU','LFPB','EGLF','LSZH','LSGG','LEMD','LIRA',
+    'OMDB','KTEB','LFBO','LFBD','EBBR','EDDB','LOWW','LIMC','LFMN','LFML','LTFM'];
+  const {data} = await db.from('airports').select('*').in('icao', mainIcaos);
+  if(data) data.forEach(a => { AIRPORTS_CACHE[a.icao] = a; });
+  console.log(`✓ ${data?.length || 0} aéroports préchargés`);
+}
+
 
 // ─────────────────────────────────────────────
 // MARKET ROUTES (realistic biz av airports)
@@ -839,8 +876,10 @@ async function generateSchedule(){
     // ── FERRY RETOUR BASE: si c'est le dernier vol de la semaine ou vendredi ──
     const isLastRoute=(i===routes.length-1)||(i%7===4); // vendredi
     if(isLastRoute && r.to!==ac.base){
-      const depAP2=AIRPORTS[r.to]||{lat:47.15,lon:-1.6};
-      const baseAP=AIRPORTS[ac.base]||{lat:47.15,lon:-1.6};
+      if(!AIRPORTS_CACHE[r.to]) await getAirport(r.to);
+      if(!AIRPORTS_CACHE[ac.base]) await getAirport(ac.base);
+      const depAP2=AIRPORTS_CACHE[r.to]||{lat:47.15,lon:-1.6};
+      const baseAP=AIRPORTS_CACHE[ac.base]||{lat:47.15,lon:-1.6};
       const retDist=Math.round(distNM(depAP2.lat,depAP2.lon,baseAP.lat,baseAP.lon));
       const retDur=Math.round(retDist/(ac.cruise_kt/60));
       const retDepH=Math.floor(arrTotalMin/60)+1;
