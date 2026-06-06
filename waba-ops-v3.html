@@ -299,6 +299,7 @@ nav{flex:1;padding:10px 8px;overflow-y:auto;}
       <button class="modal-tab" onclick="switchTab('notam')">NOTAM</button>
       <button class="modal-tab" onclick="switchTab('fuel')">Carburant</button>
       <button class="modal-tab" onclick="switchTab('handling')">Sol</button>
+      <button class="modal-tab" onclick="switchTab('terrain')">Terrain</button>
     </div>
     <div class="modal-body">
       <div class="tab-content active" id="tab-general"></div>
@@ -309,6 +310,7 @@ nav{flex:1;padding:10px 8px;overflow-y:auto;}
       <div class="tab-content" id="tab-notam"></div>
       <div class="tab-content" id="tab-fuel"></div>
       <div class="tab-content" id="tab-handling"></div>
+      <div class="tab-content" id="tab-terrain"></div>
     </div>
   </div>
 </div>
@@ -1536,6 +1538,160 @@ function openBriefing(fid){
     </div>
   `;
 
+  // ── TERRAIN TAB ──
+  const terrainDest = getTerrainData(f.destination);
+  const terrainDep = getTerrainData(f.origin);
+
+  document.getElementById('tab-terrain').innerHTML = `
+    <div style="margin-bottom:14px">
+
+      <!-- Aéroport de départ -->
+      <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:1px;display:flex;align-items:center;gap:8px">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div>
+        DÉPART — ${f.origin} · ${terrainDep?terrainDep.name:'Données non disponibles'}
+      </div>
+
+      ${terrainDep ? `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+        <div style="background:var(--card);border-radius:8px;padding:10px 12px;border:1px solid var(--border)">
+          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Élévation</div>
+          <div style="font-size:14px;color:var(--text);font-weight:700;font-family:'JetBrains Mono',monospace">${terrainDep.elevation_ft} ft</div>
+          <div style="font-size:10px;color:var(--text2)">${Math.round(terrainDep.elevation_ft*0.3048)} m</div>
+        </div>
+        <div style="background:var(--card);border-radius:8px;padding:10px 12px;border:1px solid var(--border)">
+          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Couvre-feu</div>
+          <div style="font-size:13px;color:${terrainDep.curfew?'var(--orange)':'var(--green)'};font-weight:700">${terrainDep.curfew?('⚠ '+terrainDep.curfew_hours):'✓ Aucun'}</div>
+        </div>
+        <div style="background:var(--card);border-radius:8px;padding:10px 12px;border:1px solid var(--border)">
+          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">PPR / Slot</div>
+          <div style="font-size:12px;font-weight:700">${terrainDep.ppr?'<span style="color:var(--orange)">PPR requis</span>':'<span style="color:var(--green)">Pas de PPR</span>'} · ${terrainDep.slot?'<span style="color:var(--orange)">Slot requis</span>':'<span style="color:var(--green)">Pas de slot</span>'}</div>
+        </div>
+      </div>
+
+      <!-- Pistes départ -->
+      <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Pistes disponibles</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+        ${terrainDep.runways.map(rwy=>`
+        <div style="background:var(--card);border-radius:7px;padding:9px 12px;border:1px solid var(--border);display:flex;gap:12px;align-items:center">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--blue);min-width:60px">${rwy.id}</div>
+          <div style="flex:1">
+            <div style="font-size:12px;color:var(--text);font-weight:600">${rwy.length_m.toLocaleString('fr-FR')} m × ${rwy.width_m} m · ${rwy.surface}</div>
+            <div style="font-size:10px;color:var(--text2)">${rwy.ils} · PCN ${rwy.pcn}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+
+      <!-- Fréquences départ -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">
+        ${Object.entries(terrainDep.freqs).map(([k,v])=>`
+        <div style="background:var(--card2);border-radius:6px;padding:7px 10px">
+          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">${k.toUpperCase()}</div>
+          <div style="font-size:12px;color:var(--gold);font-weight:700;font-family:'JetBrains Mono',monospace">${v}</div>
+        </div>`).join('')}
+      </div>` : `
+      <div style="background:var(--card2);border-radius:8px;padding:14px;text-align:center;color:var(--text2);font-size:12px;margin-bottom:12px">
+        Données terrain non disponibles pour ${f.origin}
+      </div>`}
+
+      <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
+
+      <!-- Aéroport de destination -->
+      <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:1px;display:flex;align-items:center;gap:8px">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--gold)"></div>
+        DESTINATION — ${f.destination} · ${terrainDest?terrainDest.name:'Données non disponibles'}
+      </div>
+
+      ${terrainDest ? `
+      <!-- KPIs destination -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+        <div style="background:var(--card);border-radius:8px;padding:10px 12px;border:1px solid var(--border)">
+          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Élévation</div>
+          <div style="font-size:14px;color:var(--text);font-weight:700;font-family:'JetBrains Mono',monospace">${terrainDest.elevation_ft} ft</div>
+          <div style="font-size:10px;color:var(--text2)">${Math.round(terrainDest.elevation_ft*0.3048)} m</div>
+        </div>
+        <div style="background:var(--card);border-radius:8px;padding:10px 12px;border:1px solid var(--border)">
+          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Couvre-feu</div>
+          <div style="font-size:13px;color:${terrainDest.curfew?'var(--orange)':'var(--green)'};font-weight:700">${terrainDest.curfew?('⚠ '+terrainDest.curfew_hours):'✓ Aucun'}</div>
+        </div>
+        <div style="background:var(--card);border-radius:8px;padding:10px 12px;border:1px solid var(--border)">
+          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">PPR / Slot</div>
+          <div style="font-size:12px;font-weight:700">${terrainDest.ppr?'<span style="color:var(--orange)">PPR requis</span>':'<span style="color:var(--green)">Pas de PPR</span>'} · ${terrainDest.slot?'<span style="color:var(--orange)">Slot requis</span>':'<span style="color:var(--green)">Pas de slot</span>'}</div>
+        </div>
+      </div>
+
+      <!-- Alertes spéciales -->
+      ${terrainDest.special||terrainDest.noise_restriction||terrainDest.weight_limit_lbs?`
+      <div style="background:#E8A87C11;border:1px solid #E8A87C44;border-radius:8px;padding:11px 14px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:6px">⚠ ALERTES SPÉCIALES</div>
+        ${terrainDest.special?`<div style="font-size:11px;color:var(--text);margin-bottom:3px">· ${terrainDest.special}</div>`:''}
+        ${terrainDest.noise_restriction?`<div style="font-size:11px;color:var(--text);margin-bottom:3px">· Restriction bruit : ${terrainDest.noise_restriction}</div>`:''}
+        ${terrainDest.weight_limit_lbs?`<div style="font-size:11px;color:var(--text);margin-bottom:3px">· Limite masse : ${terrainDest.weight_limit_lbs.toLocaleString('fr-FR')} lbs (${Math.round(terrainDest.weight_limit_lbs*0.453592).toLocaleString('fr-FR')} kg)</div>`:''}
+      </div>`:''}
+
+      <!-- Pistes destination -->
+      <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Pistes disponibles</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+        ${terrainDest.runways.map(rwy=>`
+        <div style="background:var(--card);border-radius:7px;padding:9px 12px;border:1px solid var(--border);display:flex;gap:12px;align-items:center">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--blue);min-width:60px">${rwy.id}</div>
+          <div style="flex:1">
+            <div style="font-size:12px;color:var(--text);font-weight:600">${rwy.length_m.toLocaleString('fr-FR')} m × ${rwy.width_m} m · ${rwy.surface}</div>
+            <div style="font-size:10px;color:var(--text2)">${rwy.ils} · PCN ${rwy.pcn}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+
+      <!-- Aides à l'approche -->
+      <div style="font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Aides à l'approche</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        ${terrainDest.approaches.map(a=>`<span style="background:var(--card2);border:1px solid var(--border);border-radius:5px;padding:4px 10px;font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace">${a}</span>`).join('')}
+      </div>
+
+      <!-- Fréquences -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
+        ${Object.entries(terrainDest.freqs).map(([k,v])=>`
+        <div style="background:var(--card2);border-radius:6px;padding:7px 10px">
+          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">${k.toUpperCase()}</div>
+          <div style="font-size:12px;color:var(--gold);font-weight:700;font-family:'JetBrains Mono',monospace">${v}</div>
+        </div>`).join('')}
+      </div>
+
+      <!-- Dangers -->
+      ${terrainDest.dangers&&terrainDest.dangers.length>0?`
+      <div style="background:#E8A87C11;border:1px solid #E8A87C33;border-radius:8px;padding:11px 14px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:6px">⚠ DANGERS & POINTS D'ATTENTION</div>
+        ${terrainDest.dangers.map(d=>`<div style="font-size:11px;color:var(--text);margin-bottom:3px">· ${d}</div>`).join('')}
+      </div>`:''}
+
+      <!-- Remarques générales -->
+      <div style="background:var(--card2);border-radius:8px;padding:11px 14px;margin-bottom:14px;border-left:3px solid var(--blue)">
+        <div style="font-size:10px;color:var(--blue);font-weight:800;margin-bottom:5px;letter-spacing:1px">📋 REMARQUES OPÉRATIONNELLES</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.7">${terrainDest.remarks||'—'}</div>
+      </div>` : `
+      <div style="background:var(--card2);border-radius:8px;padding:14px;text-align:center;color:var(--text2);font-size:12px;margin-bottom:12px">
+        Données terrain non disponibles pour ${f.destination}
+      </div>`}
+
+      <!-- Commentaires pilotes -->
+      <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:1px">💬 COMMENTAIRES PILOTES WABA</div>
+      <div id="pilot-comments-${f.destination}" style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text2);text-align:center;padding:14px">Chargement des commentaires...</div>
+      </div>
+      <div style="background:var(--card);border-radius:8px;padding:12px 14px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--text2);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Ajouter un commentaire</div>
+        <textarea id="comment-text-${f.destination}" placeholder="Partagez votre expérience sur cet aéroport (conditions, astuces, points d'attention...)" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;resize:none;height:70px;margin-bottom:8px"></textarea>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="font-size:10px;color:var(--text2)">Note :</div>
+          ${[1,2,3,4,5].map(n=>`<button onclick="setRating(${n},'${f.destination}')" id="star-${n}-${f.destination}" style="background:transparent;border:none;cursor:pointer;font-size:16px;color:var(--text3)" title="${n} étoile(s)">★</button>`).join('')}
+          <button onclick="submitComment('${f.destination}','${f.aircraft_id}')" style="margin-left:auto;background:var(--gold);border:none;color:#000;border-radius:6px;padding:6px 16px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">Publier</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Load pilot comments
+  loadPilotComments(f.destination);
+
   switchTab('general');
   document.getElementById('modal-overlay').classList.add('open');
 }
@@ -1647,6 +1803,213 @@ function getHandlingData(icao, aircraftId, ac){
   ];
 
   return {...data, services};
+}
+
+// ── AIRPORT TERRAIN DATABASE ──
+const AIRPORT_TERRAIN = {
+  'LFRS':{
+    name:'Nantes-Atlantique',elevation_ft:90,
+    runways:[
+      {id:'03/21',length_m:2900,width_m:45,surface:'Asphalte',ils:'ILS CAT I RWY 03',pcn:90},
+      {id:'07/25',length_m:1400,width_m:30,surface:'Asphalte',ils:'Non instrumentée',pcn:60},
+    ],
+    approaches:['ILS RWY 03','RNAV(GNSS) RWY 03','VOR RWY 21','VOR/DME RWY 03'],
+    freqs:{twr:'118.550',app:'119.400',atis:'126.025',fbo:'130.500'},
+    dangers:['Zone militaire LFRS — vérifier NOTAMs','Faune — oiseaux actifs au printemps','Terrain plat — pas de relief significatif'],
+    remarks:'Base principale WABA. Parking M réservé aviation affaires. Accès zone M par taxiway Echo.',
+    curfew:false,
+    ppr:false,
+    slot:false,
+  },
+  'LFRZ':{
+    name:'Saint-Nazaire Montoir',elevation_ft:13,
+    runways:[
+      {id:'04/22',length_m:2400,width_m:45,surface:'Asphalte',ils:'VOR/DME RWY 04',pcn:70},
+    ],
+    approaches:['VOR/DME RWY 04','RNAV(GNSS) RWY 04'],
+    freqs:{twr:'118.100',app:'125.250',atis:'126.800',fbo:'122.800'},
+    dangers:['Trafic Airbus adjacent — grande vigilance','Faune — zone estuaire','Vent dominant secteur ouest'],
+    remarks:'Aéroport industriel — trafic Airbus important. Coordination obligatoire avec handling local.',
+    curfew:false,
+    ppr:true,
+    slot:false,
+  },
+  'LFPB':{
+    name:'Paris Le Bourget',elevation_ft:218,
+    runways:[
+      {id:'07/25',length_m:3000,width_m:45,surface:'Asphalte',ils:'ILS CAT II RWY 07',pcn:100},
+      {id:'03/21',length_m:2400,width_m:45,surface:'Asphalte',ils:'ILS CAT I RWY 03',pcn:95},
+    ],
+    approaches:['ILS CAT II RWY 07','ILS RWY 03','RNAV(GNSS) RWY 07/25','VOR RWY 25'],
+    freqs:{twr:'119.050',app:'124.850',atis:'128.375',fbo:'131.350'},
+    dangers:['CTR Paris très chargée — anticipez les délais ATC','Trafic hélicoptères fréquent','TFR fréquentes zone Île-de-France'],
+    remarks:'Premier aéroport d'affaires européen. Slot obligatoire. Couvre-feu strict 23h-06h LT. Frais de handling élevés.',
+    curfew:true,
+    curfew_hours:'23:00-06:00 LT',
+    ppr:true,
+    slot:true,
+  },
+  'EGLF':{
+    name:'Farnborough Airport',elevation_ft:238,
+    runways:[
+      {id:'06/24',length_m:2440,width_m:46,surface:'Asphalte',ils:'ILS CAT III RWY 06',pcn:100},
+    ],
+    approaches:['ILS CAT III RWY 06','RNAV(GNSS) RWY 06/24','VOR/DME RWY 24'],
+    freqs:{twr:'122.500',app:'134.350',atis:'128.400',fbo:'130.050'},
+    dangers:['QNH anglais en hPa — standard','Zone P-106 (Restricted) adjacente — Windsor','Military training areas nearby'],
+    remarks:'Aéroport d'affaires dédié. QC noise restrictions strictes (max QC2). Night curfew 23:00-07:00. PPR obligatoire. Signature Aviation FBO.',
+    curfew:true,
+    curfew_hours:'23:00-07:00 LT',
+    ppr:true,
+    slot:false,
+    noise_restriction:'QC2 maximum — vérifier classification avion',
+  },
+  'LSZH':{
+    name:'Zurich Airport',elevation_ft:1416,
+    runways:[
+      {id:'10/28',length_m:3300,width_m:60,surface:'Asphalte',ils:'ILS CAT IIIb RWY 28',pcn:120},
+      {id:'14/32',length_m:3700,width_m:60,surface:'Asphalte',ils:'ILS CAT IIIb RWY 14',pcn:120},
+      {id:'16/34',length_m:2500,width_m:60,surface:'Asphalte',ils:'ILS CAT I RWY 34',pcn:100},
+    ],
+    approaches:['ILS CAT IIIb RWY 28/14','RNAV(GNSS) toutes pistes','VOR/DME RWY 16'],
+    freqs:{twr:'118.100',app:'118.000',atis:'128.525',fbo:'121.750'},
+    dangers:['Relief alpin — attention aux Alpes au sud','Turbulences fréquentes en approche par vent du sud','Givrage possible en hiver'],
+    remarks:'Élévation 1416 ft — performances réduites été/chaleur. Couvre-feu strict. Frais de landing élevés. Slot recommandé.',
+    curfew:true,
+    curfew_hours:'23:30-06:00 LT',
+    ppr:false,
+    slot:true,
+  },
+  'LSGG':{
+    name:'Genève Cointrin',elevation_ft:1411,
+    runways:[
+      {id:'04/22',length_m:3900,width_m:60,surface:'Asphalte',ils:'ILS CAT IIIb RWY 04',pcn:110},
+    ],
+    approaches:['ILS CAT IIIb RWY 04','RNAV(GNSS) RWY 04/22','VOR/DME RWY 22'],
+    freqs:{twr:'118.700',app:'128.150',atis:'126.175',fbo:'121.900'},
+    dangers:['Mont Blanc et relief alpin au SE','Vent du lac — turbulences possibles','Brouillard fréquent en automne/hiver'],
+    remarks:'Élévation 1411 ft. Une seule piste — trafic dense. Jet Aviation FBO reconnu. Clientèle diplomatique et financière importante.',
+    curfew:false,
+    ppr:false,
+    slot:true,
+  },
+  'OMDB':{
+    name:'Dubai International',elevation_ft:62,
+    runways:[
+      {id:'12L/30R',length_m:4000,width_m:60,surface:'Asphalte',ils:'ILS CAT IIIb',pcn:130},
+      {id:'12R/30L',length_m:4450,width_m:60,surface:'Asphalte',ils:'ILS CAT IIIb',pcn:130},
+    ],
+    approaches:['ILS CAT IIIb RWY 12L/30R/12R/30L','RNAV(GNSS)','VOR/DME'],
+    freqs:{twr:'118.750',app:'124.900',atis:'126.250',fbo:'131.000'},
+    dangers:['Chaleur extrême été (50°C+) — performances réduites','Vents de sable (Shamal) — visibilité réduite','Trafic extrêmement dense','Permis de survol requis certains pays en route'],
+    remarks:'OAT été +45/50°C — calcul de performance obligatoire. Douanes strictes. Visa à l'arrivée certaines nationalités. Alcool à bord interdit en dehors de l'avion.',
+    curfew:false,
+    ppr:false,
+    slot:true,
+    special:'Réglementation islamique — alcool, tenue vestimentaire, comportement public',
+  },
+  'KTEB':{
+    name:'Teterboro Airport',elevation_ft:9,
+    runways:[
+      {id:'01/19',length_m:1819,width_m:30,surface:'Asphalte',ils:'ILS RWY 01',pcn:70},
+      {id:'06/24',length_m:1372,width_m:30,surface:'Asphalte',ils:'Non instrumentée',pcn:60},
+    ],
+    approaches:['ILS RWY 01','RNAV(GNSS) RWY 01/19','VOR RWY 19'],
+    freqs:{twr:'119.500',app:'125.150',atis:'132.175',fbo:'130.600'},
+    dangers:['Manhattan Class B airspace — coordination ATC critique','Pistes courtes — vérifier performances d'atterrissage BBJ2','Trafic intense — NYC area','Weight restriction: 100,000 lbs MTOW max'],
+    remarks:'Attention MTOW 100 000 lbs (45 360 kg) — BBJ2 MTOW 79 016 kg : OK mais vérifier. APIS requis 60 min avant arrivée. Customs on site. Signature Aviation FBO.',
+    curfew:false,
+    ppr:false,
+    slot:false,
+    weight_limit_lbs:100000,
+  },
+  'LEMD':{
+    name:'Madrid Barajas',elevation_ft:2000,
+    runways:[
+      {id:'14L/32R',length_m:4350,width_m:60,surface:'Asphalte',ils:'ILS CAT IIIb',pcn:120},
+      {id:'14R/32L',length_m:4100,width_m:60,surface:'Asphalte',ils:'ILS CAT IIIb',pcn:120},
+      {id:'18L/36R',length_m:3500,width_m:60,surface:'Asphalte',ils:'ILS CAT II',pcn:110},
+      {id:'18R/36L',length_m:3500,width_m:60,surface:'Asphalte',ils:'ILS CAT I',pcn:110},
+    ],
+    approaches:['ILS CAT IIIb toutes pistes principales','RNAV(GNSS)','VOR/DME'],
+    freqs:{twr:'118.150',app:'119.100',atis:'118.450',fbo:'121.900'},
+    dangers:['Élévation 2000 ft — performances réduites','Vents forts secteur nord (tramontane)','Trafic dense'],
+    remarks:'Élévation importante — recalculer performances décollage en été. Slot recommandé. Handling professionnel disponible.',
+    curfew:false,
+    ppr:false,
+    slot:true,
+  },
+  'LIRA':{
+    name:'Rome Ciampino',elevation_ft:427,
+    runways:[
+      {id:'15/33',length_m:2207,width_m:45,surface:'Asphalte',ils:'ILS RWY 15',pcn:80},
+    ],
+    approaches:['ILS RWY 15','RNAV(GNSS) RWY 15/33','VOR/DME RWY 33'],
+    freqs:{twr:'118.050',app:'119.200',atis:'121.800',fbo:'130.400'},
+    dangers:['Piste unique courte — calcul performances critique','Relief collines albaines au SE','Oiseaux fréquents','Trafic low-cost important — anticipez délais'],
+    remarks:'Couvre-feu 23h-06h strict. Capacité limitée. PPR obligatoire. Piste 2207m — vérifier performances BBJ2 (LDLR critique).',
+    curfew:true,
+    curfew_hours:'23:00-06:00 LT',
+    ppr:true,
+    slot:false,
+  },
+};
+
+function getTerrainData(icao){
+  return AIRPORT_TERRAIN[icao] || null;
+}
+
+
+// ── PILOT COMMENTS ──
+let selectedRatings = {};
+
+function setRating(n, icao){
+  selectedRatings[icao] = n;
+  for(let i=1;i<=5;i++){
+    const star = document.getElementById('star-'+i+'-'+icao);
+    if(star) star.style.color = i<=n ? 'var(--gold)' : 'var(--text3)';
+  }
+}
+
+async function loadPilotComments(icao){
+  const el = document.getElementById('pilot-comments-'+icao);
+  if(!el) return;
+  const{data}=await db.from('airport_comments').select('*,pilots(name)').eq('icao',icao).order('created_at',{ascending:false}).limit(10);
+  if(!data||!data.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--text2);text-align:center;padding:10px;background:var(--card2);border-radius:7px">Aucun commentaire pour cet aéroport — soyez le premier !</div>';
+    return;
+  }
+  el.innerHTML = data.map(c=>`
+    <div style="background:var(--card2);border-radius:7px;padding:10px 14px;margin-bottom:7px;border-left:3px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <div style="font-size:11px;color:var(--text);font-weight:700">${c.pilots?.name||'Pilote WABA'}</div>
+        <div style="display:flex;gap:2px">
+          ${[1,2,3,4,5].map(n=>`<span style="color:${n<=(c.rating||0)?'var(--gold)':'var(--text3)';font-size:12px">★</span>`).join('')}
+          <span style="font-size:10px;color:var(--text3);margin-left:6px">${new Date(c.created_at).toLocaleDateString('fr-FR')}</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.6">${c.comment}</div>
+      ${c.aircraft_id?`<div style="font-size:10px;color:var(--text3);margin-top:4px">Appareil : ${c.aircraft_id}</div>`:''}
+    </div>`).join('');
+}
+
+async function submitComment(icao, aircraftId){
+  const text = document.getElementById('comment-text-'+icao)?.value?.trim();
+  if(!text){showToast('Veuillez écrire un commentaire','err');return;}
+  const rating = selectedRatings[icao]||null;
+  const{error}=await db.from('airport_comments').insert({
+    icao,
+    pilot_id:null, // Will be linked when auth is complete
+    comment:text,
+    rating,
+    aircraft_id:aircraftId,
+    visit_date:new Date().toISOString().split('T')[0],
+  });
+  if(error){showToast('Erreur lors de la publication','err');return;}
+  showToast('✓ Commentaire publié !');
+  document.getElementById('comment-text-'+icao).value='';
+  selectedRatings[icao]=null;
+  loadPilotComments(icao);
 }
 
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');currentFlight=null;}
