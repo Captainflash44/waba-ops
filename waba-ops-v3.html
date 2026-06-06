@@ -1724,7 +1724,7 @@ function openBriefing(fid){
 
 
   // ── FUEL TAB ──
-  const fuel = ac ? calcFuel(ac.id, f.distance_nm||300, ac.cruise_kt) : null;
+  // fuel already declared above
   const acPerf = AC_PERF[f.aircraft_id] || {};
   const fuelKey = 'fuel_extra_' + f.id;
   const storedExtra = parseInt(localStorage.getItem(fuelKey)||'0');
