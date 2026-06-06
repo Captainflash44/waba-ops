@@ -1113,6 +1113,54 @@ function renderMarket(){
 // ─────────────────────────────────────────────
 // SIMBRIEF API
 // ─────────────────────────────────────────────
+const SIMBRIEF_AC_TYPES = {
+  'F-EVOK': {type:'C750', engine:'TFE731-20BR', fin:'FEVOK'},
+  'F-EXZA': {type:'CL60', engine:'CF34-3B1', fin:'FEXZA'},
+  'F-LIMB': {type:'B738', engine:'CFM56-7B27', fin:'FLIMB'},
+};
+
+function openSimBrief(){
+  if(!currentFlight) return;
+  const f = currentFlight;
+  const acInfo = SIMBRIEF_AC_TYPES[f.aircraft_id] || {type:'B738',engine:'CFM56-7B27',fin:f.aircraft_id};
+
+  const params = new URLSearchParams({
+    airline:'WAB',
+    fltnum:f.flight_no,
+    type:acInfo.type,
+    orig:f.origin,
+    dest:f.destination,
+    altn:f.alternate||'LFRS',
+    fl:(f.planned_fl||'FL370').replace('FL',''),
+    reg:f.aircraft_id.replace('-',''),
+    fin:acInfo.fin,
+    pax:f.pax_count||0,
+    cargo:0,
+    autoload:1,
+    userid:SIMBRIEF_PILOT_ID,
+  });
+
+  const simBriefUrl = 'https://dispatch.simbrief.com/options/custom?'+params.toString();
+
+  document.getElementById('tab-simbrief').innerHTML = `
+    <div style="background:#7EB8D411;border:1px solid #7EB8D433;border-radius:9px;padding:20px;margin-bottom:16px;text-align:center">
+      <div style="font-size:16px;margin-bottom:10px">📡</div>
+      <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px">Plan de vol pré-rempli</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:16px">
+        SimBrief va s'ouvrir avec tous les paramètres du vol :<br>
+        <strong style="color:var(--text)">${f.origin} → ${f.destination}</strong> · ${f.aircraft_id} · FL${(f.planned_fl||'FL370').replace('FL','')} · Alternate ${f.alternate||'LFRS'}
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:16px;flex-wrap:wrap">
+        <a href="${simBriefUrl}" target="_blank" style="background:var(--blue);color:#000;border:none;border-radius:7px;padding:10px 22px;cursor:pointer;font-size:12px;font-weight:700;text-decoration:none;font-family:'DM Sans',sans-serif">✈ Ouvrir SimBrief →</a>
+        <button onclick="loadSimBrief()" style="background:#A8D5A222;border:1px solid var(--green);color:var(--green);border-radius:7px;padding:10px 22px;cursor:pointer;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif">📥 Charger l'OFP</button>
+      </div>
+      <div style="font-size:10px;color:var(--text3);line-height:1.6">
+        1. Cliquez "Ouvrir SimBrief" · 2. Générez l'OFP sur SimBrief · 3. Revenez ici et cliquez "Charger l'OFP"
+      </div>
+    </div>`;
+  switchTab('simbrief');
+}
+
 async function loadSimBrief(){
   const btn=document.getElementById('simbrief-btn');
   btn.disabled=true;btn.textContent='⏳ Chargement SimBrief…';
