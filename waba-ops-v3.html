@@ -1341,11 +1341,11 @@ function openBriefing(fid){
           <div style="font-size:14px">${s.available?(s.required?'✓':'○'):'✗'}</div>
         </div>
         <div style="font-size:10px;color:var(--text2);margin-bottom:4px">${s.note||''}</div>
-        ${s.price_estimate!==null?`
+        ${(s.price_estimate!==null&&s.price_estimate!==undefined)?`
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
           <div style="font-size:9px;color:var(--text3)">${s.price_note||''}</div>
           <div style="font-size:11px;font-weight:700;color:${s.price_estimate===0?'var(--green)':'var(--gold)'}">
-            ${s.price_estimate===0?'Inclus':('~'+s.price_estimate.toLocaleString('fr-FR')+'€')}
+            ${s.price_estimate===0?'Inclus':('~'+(s.price_estimate||0).toLocaleString('fr-FR')+'€')}
           </div>
         </div>`:''}
         ${s.available&&s.toggleable?`<button onclick="toggleService(this,'${s.name}',${s.price_estimate||0})" style="width:100%;background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:4px;padding:4px;cursor:pointer;font-size:10px">Commander</button>`:''}
@@ -1361,7 +1361,7 @@ function openBriefing(fid){
           <div style="font-size:10px;color:var(--text2);margin-top:2px">Hors avitaillement carburant · Estimation indicative</div>
         </div>
         <div id="services-total" style="font-size:20px;font-weight:900;color:var(--gold);font-family:'JetBrains Mono',monospace">
-          ~${handlingData.services.filter(s=>s.required&&s.price_estimate).reduce((a,s)=>a+(s.price_estimate||0),0).toLocaleString('fr-FR')}€
+          ~${handlingData.services.filter(s=>s.required&&s.price_estimate&&s.price_estimate>0).reduce((a,s)=>a+(s.price_estimate||0),0).toLocaleString('fr-FR')}€
         </div>
       </div>
     </div>
