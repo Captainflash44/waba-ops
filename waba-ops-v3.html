@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>West Atlantic Business Aviation — OPS</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#0a0f1e; --bg2:#080c18; --card:#111827; --card2:#0d1526;
+  --border:#1e2a3a; --border2:#2e3a4a; --text:#c8d0e7; --text2:#6b7a99; --text3:#3a4a6a;
+  --gold:#C8A96E; --blue:#7EB8D4; --green:#A8D5A2; --orange:#E8A87C; --sidebar:224px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;}
+.sidebar-logo{padding:22px 20px 18px;border-bottom:1px solid var(--border);}
+.airline{font-size:9px;color:var(--gold);font-weight:800;letter-spacing:3px;margin-bottom:3px;font-family:'Syne',sans-serif;}
+.sname{font-size:16px;font-weight:900;color:#fff;font-family:'Syne',sans-serif;line-height:1.2;}
+.ssub{font-size:10px;color:var(--text3);margin-top:3px;}
+.sync-row{display:flex;align-items:center;gap:6px;margin-top:7px;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+.dot.red{background:var(--orange);}
+.sync-label{font-size:10px;color:var(--green);}
+nav{flex:1;padding:10px 8px;overflow-y:auto;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;margin-bottom:3px;font-size:12px;font-weight:500;color:var(--text2);border:1px solid transparent;transition:all .15s;position:relative;}
+.nav-item:hover{color:var(--text);background:#ffffff08;}
+.nav-item.active{color:var(--gold);background:#C8A96E18;border-color:#C8A96E33;font-weight:700;}
+.nav-badge{position:absolute;right:8px;background:var(--orange);border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#000;}
+.sidebar-footer{padding:12px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);}
+#main{margin-left:var(--sidebar);min-height:100vh;padding:26px 30px;}
+.page{display:none;animation:fadeIn .25s ease;}
+.page.active{display:block;}
+.page-title{font-size:22px;font-weight:900;color:#fff;margin-bottom:3px;font-family:'Syne',sans-serif;}
+.page-sub{font-size:12px;color:var(--text2);margin-bottom:22px;}
+.stitle{font-size:11px;font-weight:800;color:var(--text);margin-bottom:12px;letter-spacing:2px;text-transform:uppercase;font-family:'Syne',sans-serif;}
+.card{background:var(--card);border-radius:13px;padding:18px;border:1px solid var(--border);}
+.card2{background:var(--card2);border-radius:8px;padding:9px 13px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.kpi{background:var(--card);border-radius:13px;padding:16px 18px;border:1px solid var(--border);}
+.kpi-label{font-size:10px;color:var(--text2);margin-bottom:7px;letter-spacing:1px;text-transform:uppercase;}
+.kpi-val{font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;}
+.kpi-sub{font-size:11px;color:var(--text2);margin-top:3px;}
+.badge{display:inline-block;border-radius:4px;padding:2px 9px;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;}
+.ac-card{background:var(--card);border:1.5px solid var(--border);border-radius:13px;padding:16px 18px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.ac-card:hover{border-color:var(--border2);}
+.ac-card.sel{background:#1a2035;}
+.ac-reg{font-size:17px;font-weight:800;color:#fff;letter-spacing:2px;font-family:'JetBrains Mono',monospace;}
+.ac-type{font-size:11px;color:var(--text2);margin-top:2px;}
+.flight-row{background:var(--card);border-radius:9px;padding:11px 16px;border:1px solid var(--border);display:flex;align-items:center;gap:12px;cursor:pointer;transition:border .15s;margin-bottom:7px;}
+.flight-row:hover{border-color:var(--border2);}
+.flight-no{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:800;color:var(--gold);min-width:78px;}
+.btn{border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;transition:all .15s;font-family:'DM Sans',sans-serif;}
+.btn-gold{background:var(--gold);color:#000;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2);}
+.btn-blue{background:#7EB8D422;border:1px solid #7EB8D444;color:var(--blue);}
+.btn-green{background:#A8D5A222;border:1px solid #A8D5A244;color:var(--green);}
+.avail-table{width:100%;border-collapse:collapse;}
+.avail-table th{text-align:center;padding:5px 7px;color:var(--text2);font-size:10px;font-weight:600;}
+.avail-table th:first-child{text-align:left;padding-left:8px;}
+.avail-table td{padding:3px;text-align:center;}
+.avail-table td:first-child{text-align:left;padding:5px 8px;font-size:11px;color:var(--text);font-weight:600;white-space:nowrap;}
+.avail-cell{width:34px;height:26px;border-radius:5px;cursor:pointer;margin:0 auto;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--text3);transition:all .15s;background:var(--card2);}
+#modal-overlay{position:fixed;inset:0;background:#000000cc;z-index:1000;display:none;align-items:center;justify-content:center;padding:18px;}
+#modal-overlay.open{display:flex;}
+#modal{background:#0a0f1e;border:1.5px solid var(--border);border-radius:16px;width:100%;max-width:900px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;}
+.modal-header{background:var(--card);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
+.modal-tabs{display:flex;gap:1px;padding:8px 22px 0;border-bottom:1px solid var(--border);background:var(--card);overflow-x:auto;}
+.modal-tab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);padding:7px 13px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;}
+.modal-tab.active{color:var(--gold);border-bottom-color:var(--gold);background:#C8A96E22;}
+.modal-body{overflow-y:auto;padding:22px;flex:1;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.maint-row{display:flex;justify-content:space-between;align-items:center;background:var(--card2);border-radius:7px;padding:9px 13px;margin-bottom:7px;}
+#toast{position:fixed;top:18px;right:18px;z-index:2000;border-radius:9px;padding:11px 18px;font-size:12px;font-weight:600;display:none;backdrop-filter:blur(10px);}
+.loader{display:flex;align-items:center;justify-content:center;height:180px;flex-direction:column;gap:11px;}
+.spinner{width:30px;height:30px;border:3px solid var(--border);border-top:3px solid var(--gold);border-radius:50%;animation:spin 1s linear infinite;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px;}
+.detail-item{background:var(--card2);border-radius:7px;padding:8px 11px;}
+.detail-label{font-size:9px;color:var(--text2);margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px;}
+.detail-val{font-size:12px;color:var(--text);font-weight:600;}
+.market-row{background:var(--card);border-radius:9px;padding:13px 16px;border:1px solid var(--border);display:flex;align-items:center;gap:14px;margin-bottom:9px;}
+.pos-btn{background:var(--card2);border:1px solid var(--border2);color:var(--text);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:10px;font-family:'JetBrains Mono',monospace;transition:all .15s;}
+.pos-btn:hover{border-color:var(--blue);color:var(--blue);}
+.brief-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.brief-item{background:var(--card);border-radius:7px;padding:11px 14px;border:1px solid var(--border);}
+.brief-label{font-size:9px;color:var(--text2);margin-bottom:3px;letter-spacing:.5px;text-transform:uppercase;}
+.brief-val{font-size:12px;color:var(--text);font-weight:600;}
+.pax-row{background:var(--card);border-radius:7px;padding:9px 14px;border:1px solid var(--border);display:flex;align-items:center;gap:11px;margin-bottom:7px;}
+.cargo-row{background:var(--card);border-radius:7px;padding:11px 14px;border:1px solid var(--border);margin-bottom:9px;}
+.cargo-row.hazmat{border-color:var(--orange);}
+.wx-block{background:var(--card);border-radius:7px;padding:13px 14px;border:1px solid var(--border);margin-bottom:9px;}
+.metar{font-size:11px;color:var(--green);font-family:'JetBrains Mono',monospace;background:var(--card2);padding:7px 11px;border-radius:5px;margin-bottom:7px;}
+.taf{font-size:11px;color:var(--text);font-family:'JetBrains Mono',monospace;background:var(--card2);padding:7px 11px;border-radius:5px;}
+.fuel-row{background:var(--card);border-radius:7px;padding:9px 14px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.fuel-total{background:#C8A96E22;border-radius:7px;padding:11px 14px;border:1px solid var(--gold);display:flex;justify-content:space-between;align-items:center;margin-top:4px;}
+.ferry-banner{background:#7EB8D422;border:1px solid var(--blue);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--blue);font-weight:600;}
+#map{height:420px;border-radius:11px;border:1px solid var(--border);}
+.leaflet-container{background:#0d1526 !important;}
+.simbrief-panel{background:#7EB8D411;border:1px solid #7EB8D433;border-radius:9px;padding:14px 16px;margin-bottom:14px;}
+.simbrief-btn{background:linear-gradient(135deg,#1a6b8a,#0d4a61);border:1px solid var(--blue);color:#fff;border-radius:7px;padding:9px 18px;cursor:pointer;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.simbrief-btn:hover{background:linear-gradient(135deg,#1e7fa0,#0f5570);}
+.simbrief-btn:disabled{opacity:.5;cursor:not-allowed;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.mono{font-family:'JetBrains Mono',monospace;}
+.syne{font-family:'Syne',sans-serif;}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="airline">WEST ATLANTIC</div>
+    <div class="sname">Business<br>Aviation</div>
+    <div class="ssub">WAB · LFRS / LFRE · LFRN</div>
+    <div class="sync-row"><div class="dot" id="sync-dot"></div><div class="sync-label" id="sync-label">Connexion...</div></div>
+  </div>
+  <nav>
+    <div class="nav-item active" data-page="dashboard"><span>⬡</span> Tableau de bord</div>
+    <div class="nav-item" data-page="map"><span>🗺</span> Carte en direct</div>
+    <div class="nav-item" data-page="fleet"><span>✈</span> Flotte</div>
+    <div class="nav-item" data-page="maintenance"><span>🔧</span> Maintenance</div>
+    <div class="nav-item" data-page="availability"><span>📅</span> Disponibilités</div>
+    <div class="nav-item" data-page="schedule"><span>🗓</span> Planning</div>
+    <div class="nav-item" data-page="market"><span>📊</span> Marché</div>
+    <div class="nav-item" data-page="safety"><span>🛡</span> Sécurité des vols</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div style="color:var(--text2);margin-bottom:2px">Centre technique</div>
+    <div>LFRN — Morlaix</div>
+    <div style="margin-top:6px;color:var(--text3)">v3.0 · SimBrief · Leaflet · Supabase</div>
+  </div>
+</div>
+
+<div id="main">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-title">Tableau de bord opérationnel</div>
+    <div class="page-sub">West Atlantic Business Aviation · Semaine 24 · Juin 2026</div>
+    <div class="g4">
+      <div class="kpi"><div class="kpi-label">Disponibles</div><div class="kpi-val" id="kpi-avail" style="color:var(--green)">—</div><div class="kpi-sub" id="kpi-avail-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Vols semaine 24</div><div class="kpi-val" id="kpi-flights" style="color:var(--blue)">—</div><div class="kpi-sub" id="kpi-flights-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Alertes maintenance</div><div class="kpi-val" id="kpi-maint" style="color:var(--orange)">—</div><div class="kpi-sub" id="kpi-maint-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Pilotes actifs</div><div class="kpi-val" id="kpi-pilots" style="color:var(--gold)">—</div><div class="kpi-sub" id="kpi-pilots-sub">—</div></div>
+    </div>
+    <div class="stitle">Flotte West Atlantic</div>
+    <div class="g3" id="fleet-cards-dash"></div>
+    <div id="upcoming-section" style="display:none">
+      <div class="stitle">Prochains vols planifiés</div>
+      <div id="upcoming-flights"></div>
+    </div>
+    <div id="no-planning" class="card" style="text-align:center;padding:30px">
+      <div style="font-size:13px;color:var(--text);margin-bottom:11px">Aucun planning pour cette semaine</div>
+      <button class="btn btn-gold" onclick="showPage('availability')">Renseigner les disponibilités →</button>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="page" id="page-map">
+    <div class="page-title">Carte en direct</div>
+    <div class="page-sub">Positions temps réel · Sync Supabase</div>
+    <div id="map"></div>
+    <div style="margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px" id="map-ac-list"></div>
+  </div>
+
+  <!-- FLEET -->
+  <div class="page" id="page-fleet">
+    <div class="page-title">Gestion de flotte</div>
+    <div class="page-sub">Positions temps réel · Mise à jour manuelle</div>
+    <div class="g3" id="fleet-cards-fleet"></div>
+    <div id="fleet-detail" style="display:none">
+      <div class="g2">
+        <div class="card" id="fleet-detail-left"></div>
+        <div class="card" id="fleet-detail-right"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAINTENANCE -->
+  <div class="page" id="page-maintenance">
+    <div class="page-title">Centre Maintenance</div>
+    <div class="page-sub">LFRN — Morlaix · Règlement EU 1321/2014 Part-M · CAMO</div>
+    <div id="maint-alerts-banner" style="display:none;background:#E8A87C11;border:1px solid var(--orange);border-radius:11px;padding:13px 18px;margin-bottom:18px">
+      <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:7px" id="maint-alerts-title"></div>
+      <div id="maint-alerts-list"></div>
+    </div>
+    <div id="maint-panels"></div>
+  </div>
+
+  <!-- AVAILABILITY -->
+  <div class="page" id="page-availability">
+    <div class="page-title">Disponibilités pilotes</div>
+    <div class="page-sub">Modifications synchronisées en temps réel · Semaine 24</div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="stitle">Semaine 24 — 9 au 15 Juin 2026</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:14px">Cliquez pour cycler : AM → PM → Journée → Indispo · Sync automatique ✓</div>
+      <div style="overflow-x:auto">
+        <table class="avail-table" id="avail-table">
+          <thead><tr>
+            <th>Pilote</th>
+            <th>Lun<br><span style="color:var(--text3);font-size:9px">09/06</span></th>
+            <th>Mar<br><span style="color:var(--text3);font-size:9px">10/06</span></th>
+            <th>Mer<br><span style="color:var(--text3);font-size:9px">11/06</span></th>
+            <th>Jeu<br><span style="color:var(--text3);font-size:9px">12/06</span></th>
+            <th>Ven<br><span style="color:var(--text3);font-size:9px">13/06</span></th>
+            <th>Sam<br><span style="color:var(--text3);font-size:9px">14/06</span></th>
+            <th>Dim<br><span style="color:var(--text3);font-size:9px">15/06</span></th>
+          </tr></thead>
+          <tbody id="avail-tbody"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:11px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2)"><div style="width:11px;height:11px;border-radius:3px;background:#A8D5A244;border:1px solid var(--green)"></div>Matin</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2)"><div style="width:11px;height:11px;border-radius:3px;background:#7EB8D444;border:1px solid var(--blue)"></div>Après-midi</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2)"><div style="width:11px;height:11px;border-radius:3px;background:#C8A96E44;border:1px solid var(--gold)"></div>Journée</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:11px;align-items:center;margin-bottom:18px">
+      <button class="btn btn-gold" id="gen-btn" onclick="generateSchedule()" style="font-size:13px;padding:11px 26px;font-weight:800">🗓 Générer le planning semaine 24</button>
+    </div>
+    <div class="card"><div class="stitle">Qualifications par appareil</div><div id="pilot-quals"></div></div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div class="page" id="page-schedule">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+      <div><div class="page-title">Planning opérationnel</div><div class="page-sub" id="sched-sub">Semaine 24 · 9–15 Juin 2026</div></div>
+      <div style="display:flex;gap:9px">
+        <button class="btn btn-ghost" onclick="showPage('availability')">← Disponibilités</button>
+        <button class="btn" style="background:#C8A96E22;border:1px solid var(--gold);color:var(--gold)" onclick="generateSchedule()">🔄 Regénérer</button>
+      </div>
+    </div>
+    <div id="schedule-list"></div>
+  </div>
+
+  <!-- MARKET -->
+  <div class="page" id="page-market">
+    <div class="page-title">Marché aviation d'affaires</div>
+    <div class="page-sub">Routes réalistes depuis LFRS / LFRE · Aéroports biz av · Q2 2026</div>
+    <div id="market-list"></div>
+    <div class="card" style="margin-top:18px">
+      <div class="stitle">Analyse marché Q2 2026</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.8">Le marché biz av européen affiche une forte demande sur <span style="color:var(--green)">Paris Le Bourget, Farnborough, Teterboro et Dubai</span>. Les routes UHNW EAU progressent de +18% vs Q2 2025. CORSIA 2026 impose des compensations carbone sur vols intracommunautaires &gt;1000 km. Le segment diplomatique reste porteur depuis les bases de l'Ouest.</div>
+    </div>
+  </div>
+
+  <!-- SAFETY -->
+  <div class="page" id="page-safety">
+    <div class="page-title">Bureau Sécurité des Vols</div>
+    <div class="page-sub">Analyse post-vol · Conformité SMS · DGAC</div>
+    <div class="card" style="text-align:center;padding:38px">
+      <div style="font-size:38px;margin-bottom:14px">🛡</div>
+      <div style="font-size:15px;color:var(--text);font-weight:700;margin-bottom:7px;font-family:'Syne',sans-serif">Bureau Sécurité des Vols</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.7;max-width:500px;margin:0 auto 22px">Cette section sera alimentée par les données ACARS de chaque vol terminé. Connectez SimAcars ou notre module ACARS maison pour l'analyse automatique : VS atterrissage, déviations de route, événements, rapports SMS.</div>
+      <div style="display:flex;gap:11px;justify-content:center;flex-wrap:wrap">
+        <div style="background:var(--card2);border-radius:9px;padding:13px 18px;font-size:11px;color:var(--text2)"><div style="font-size:18px;margin-bottom:7px">📡</div>SimAcars<br>Connexion prévue</div>
+        <div style="background:var(--card2);border-radius:9px;padding:13px 18px;font-size:11px;color:var(--text2)"><div style="font-size:18px;margin-bottom:7px">📊</div>Analyse vols<br>En développement</div>
+        <div style="background:var(--card2);border-radius:9px;padding:13px 18px;font-size:11px;color:var(--text2)"><div style="font-size:18px;margin-bottom:7px">📋</div>Rapports SMS<br>En développement</div>
+        <div style="background:var(--card2);border-radius:9px;padding:13px 18px;font-size:11px;color:var(--text2)"><div style="font-size:18px;margin-bottom:7px">⚡</div>ACARS maison<br>En développement</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div class="modal-header">
+      <div>
+        <div style="display:flex;align-items:center;gap:11px">
+          <div class="mono" style="font-size:20px;font-weight:900;color:var(--gold);letter-spacing:2px" id="modal-flightno">—</div>
+          <div style="font-size:15px;color:var(--text);font-weight:700" id="modal-route">—</div>
+          <div id="modal-ferry-badge" style="display:none;background:#7EB8D422;border:1px solid var(--blue);border-radius:5px;padding:2px 9px;font-size:10px;font-weight:800;color:var(--blue)">FERRY</div>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px" id="modal-sub">—</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="simbrief-btn" id="simbrief-btn" onclick="loadSimBrief()">📡 Charger SimBrief</button>
+        <button class="btn btn-ghost" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchTab('general')">Général</button>
+      <button class="modal-tab" onclick="switchTab('simbrief')">SimBrief OFP</button>
+      <button class="modal-tab" onclick="switchTab('pax')">Passagers</button>
+      <button class="modal-tab" onclick="switchTab('cargo')">Fret</button>
+      <button class="modal-tab" onclick="switchTab('wx')">Météo</button>
+      <button class="modal-tab" onclick="switchTab('notam')">NOTAM</button>
+      <button class="modal-tab" onclick="switchTab('fuel')">Carburant</button>
+    </div>
+    <div class="modal-body">
+      <div class="tab-content active" id="tab-general"></div>
+      <div class="tab-content" id="tab-simbrief"><div style="text-align:center;padding:30px;color:var(--text2)">Cliquez sur "Charger SimBrief" pour importer le plan de vol</div></div>
+      <div class="tab-content" id="tab-pax"></div>
+      <div class="tab-content" id="tab-cargo"></div>
+      <div class="tab-content" id="tab-wx"></div>
+      <div class="tab-content" id="tab-notam"></div>
+      <div class="tab-content" id="tab-fuel"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// SUPABASE
+// ─────────────────────────────────────────────
+const SUPABASE_URL='https://ncawfnwgihmebztfrekg.supabase.co';
+const SUPABASE_KEY='sb_publishable_cF4czohNpkG2Nb4nYz45Ug_4JglChlU';
+const SIMBRIEF_PILOT_ID='553724';
+const {createClient}=supabase;
+const db=createClient(SUPABASE_URL,SUPABASE_KEY);
+const WEEK_START='2026-06-09';
+
+// ─────────────────────────────────────────────
+// AIRCRAFT PERFORMANCE DATA (realistic)
+// ─────────────────────────────────────────────
+const AC_PERF={
+  'F-EVOK':{fuel_capacity_kg:6800,fuel_flow_kg_h:900,taxi_fuel_kg:80,climb_fuel_kg:300,descent_fuel_kg:120,reserve_min:45,alternate_fuel_kg:600},
+  'F-EXZA':{fuel_capacity_kg:5800,fuel_flow_kg_h:700,taxi_fuel_kg:70,climb_fuel_kg:240,descent_fuel_kg:100,reserve_min:45,alternate_fuel_kg:500},
+  'F-LIMB':{fuel_capacity_kg:26000,fuel_flow_kg_h:4500,taxi_fuel_kg:300,climb_fuel_kg:1800,descent_fuel_kg:600,reserve_min:45,alternate_fuel_kg:2200},
+};
+
+function calcFuel(acId,dist_nm,cruise_kt){
+  const p=AC_PERF[acId];if(!p)return null;
+  const trip_time_h=dist_nm/cruise_kt;
+  const trip_fuel=Math.round(p.fuel_flow_kg_h*trip_time_h);
+  const reserve=Math.round(p.fuel_flow_kg_h*(p.reserve_min/60));
+  const cont=Math.round(trip_fuel*0.05);
+  const total=trip_fuel+p.climb_fuel_kg+p.descent_fuel_kg+reserve+p.alternate_fuel_kg+cont+p.taxi_fuel_kg;
+  const feasible=total<=p.fuel_capacity_kg;
+  return{trip_fuel,climb:p.climb_fuel_kg,descent:p.descent_fuel_kg,reserve,alternate:p.alternate_fuel_kg,cont,taxi:p.taxi_fuel_kg,total,feasible,capacity:p.fuel_capacity_kg};
+}
+
+// ─────────────────────────────────────────────
+// REALISTIC BIZ AV AIRPORTS
+// ─────────────────────────────────────────────
+const AIRPORTS={
+  LFRS:{name:'Nantes Atlantique',city:'Nantes',lat:47.1569,lon:-1.6078},
+  LFRE:{name:'Saint-Nazaire Montoir',city:'Saint-Nazaire',lat:47.3122,lon:-2.1564},
+  LFRN:{name:'Rennes Saint-Jacques',city:'Rennes',lat:48.0694,lon:-1.7347},
+  LFPB:{name:'Paris Le Bourget',city:'Paris',lat:48.9694,lon:2.4414},
+  EGLF:{name:'Farnborough',city:'Londres',lat:51.2778,lon:-0.7764},
+  EGKB:{name:'Biggin Hill',city:'Londres Sud',lat:51.3311,lon:0.0325},
+  LSZH:{name:'Zurich',city:'Zurich',lat:47.4647,lon:8.5492},
+  LEMD:{name:'Madrid Barajas',city:'Madrid',lat:40.4936,lon:-3.5668},
+  LIRA:{name:'Rome Ciampino',city:'Rome',lat:41.7994,lon:12.5949},
+  OMDB:{name:'Dubai International',city:'Dubai',lat:25.2528,lon:55.3644},
+  KTEB:{name:'Teterboro',city:'New York',lat:40.8501,lon:-74.0608},
+  LFBO:{name:'Toulouse Blagnac',city:'Toulouse',lat:43.6293,lon:1.3638},
+  LEBB:{name:'Bilbao',city:'Bilbao',lat:43.3011,lon:-2.9106},
+  LFML:{name:'Marseille Provence',city:'Marseille',lat:43.4393,lon:5.2214},
+  LSGG:{name:'Genève Cointrin',city:'Genève',lat:46.2381,lon:6.1089},
+  EDDB:{name:'Berlin Brandenburg',city:'Berlin',lat:52.3667,lon:13.5033},
+  LHBP:{name:'Budapest',city:'Budapest',lat:47.4369,lon:19.2556},
+};
+
+// ─────────────────────────────────────────────
+// MARKET ROUTES (realistic biz av airports)
+// ─────────────────────────────────────────────
+const MARKET_ROUTES=[
+  // Vols au départ de Nantes (base)
+  {from:'LFRS',to:'LFPB',label:'Nantes → Paris Le Bourget',dist_nm:196,demand:'HIGH',segment:'executive',ac_types:['C750','C700','B738']},
+  {from:'LFRS',to:'EGLF',label:'Nantes → Farnborough',dist_nm:298,demand:'HIGH',segment:'executive',ac_types:['C750','C700','B738']},
+  {from:'LFRS',to:'LSZH',label:'Nantes → Zurich',dist_nm:672,demand:'MEDIUM',segment:'financial',ac_types:['C750','C700','B738']},
+  {from:'LFRS',to:'LEMD',label:'Nantes → Madrid',dist_nm:824,demand:'MEDIUM',segment:'corporate',ac_types:['C750','C700','B738']},
+  {from:'LFRS',to:'LSGG',label:'Nantes → Genève',dist_nm:590,demand:'HIGH',segment:'financial',ac_types:['C750','C700','B738']},
+  {from:'LFRS',to:'OMDB',label:'Nantes → Dubai',dist_nm:3890,demand:'HIGH',segment:'UHNW',ac_types:['B738']},
+  {from:'LFRS',to:'KTEB',label:'Nantes → New York Teterboro',dist_nm:3240,demand:'HIGH',segment:'transatlantic',ac_types:['B738']},
+
+  // Vols depuis Paris (mise en place depuis Nantes)
+  {from:'LFPB',to:'EGLF',label:'Paris Le Bourget → Farnborough',dist_nm:212,demand:'HIGH',segment:'executive',ac_types:['C750','C700','B738']},
+  {from:'LFPB',to:'LSZH',label:'Paris Le Bourget → Zurich',dist_nm:390,demand:'HIGH',segment:'financial',ac_types:['C750','C700','B738']},
+  {from:'LFPB',to:'LIMC',label:'Paris Le Bourget → Milan',dist_nm:452,demand:'MEDIUM',segment:'luxury',ac_types:['C750','C700','B738']},
+  {from:'LFPB',to:'OMDB',label:'Paris Le Bourget → Dubai',dist_nm:3270,demand:'HIGH',segment:'UHNW',ac_types:['B738']},
+  {from:'LFPB',to:'KTEB',label:'Paris Le Bourget → New York',dist_nm:3628,demand:'HIGH',segment:'transatlantic',ac_types:['B738']},
+
+  // Vols depuis Londres (mise en place depuis Nantes)
+  {from:'EGLF',to:'LSZH',label:'Farnborough → Zurich',dist_nm:462,demand:'HIGH',segment:'financial',ac_types:['C750','C700','B738']},
+  {from:'EGLF',to:'LFPB',label:'Farnborough → Paris Le Bourget',dist_nm:212,demand:'HIGH',segment:'executive',ac_types:['C750','C700','B738']},
+  {from:'EGLF',to:'OMDB',label:'Farnborough → Dubai',dist_nm:3370,demand:'HIGH',segment:'UHNW',ac_types:['B738']},
+  {from:'EGLF',to:'KTEB',label:'Farnborough → New York',dist_nm:3467,demand:'HIGH',segment:'transatlantic',ac_types:['B738']},
+
+  // Vols depuis Genève / Zurich (clientèle financière)
+  {from:'LSGG',to:'LFPB',label:'Genève → Paris Le Bourget',dist_nm:368,demand:'MEDIUM',segment:'financial',ac_types:['C750','C700','B738']},
+  {from:'LSGG',to:'OMDB',label:'Genève → Dubai',dist_nm:3020,demand:'HIGH',segment:'UHNW',ac_types:['B738']},
+  {from:'LSZH',to:'LFPB',label:'Zurich → Paris Le Bourget',dist_nm:390,demand:'MEDIUM',segment:'financial',ac_types:['C750','C700','B738']},
+  {from:'LSZH',to:'OMDB',label:'Zurich → Dubai',dist_nm:2920,demand:'HIGH',segment:'UHNW',ac_types:['B738']},
+
+  // Vols depuis Madrid / Barcelone
+  {from:'LEMD',to:'LFPB',label:'Madrid → Paris Le Bourget',dist_nm:680,demand:'MEDIUM',segment:'corporate',ac_types:['C750','C700','B738']},
+  {from:'LEMD',to:'EGLF',label:'Madrid → Farnborough',dist_nm:780,demand:'MEDIUM',segment:'corporate',ac_types:['C750','C700','B738']},
+  {from:'LEBL',to:'LFPB',label:'Barcelone → Paris Le Bourget',dist_nm:534,demand:'MEDIUM',segment:'corporate',ac_types:['C750','C700','B738']},
+
+  // Vols diplomatiques / institutionnels depuis Bruxelles
+  {from:'EBBR',to:'LFPB',label:'Bruxelles → Paris Le Bourget',dist_nm:163,demand:'MEDIUM',segment:'diplomatique',ac_types:['C750','C700','B738']},
+  {from:'EBBR',to:'LSZH',label:'Bruxelles → Zurich',dist_nm:400,demand:'MEDIUM',segment:'diplomatique',ac_types:['C750','C700','B738']},
+
+  // Liaisons Toulouse / Bordeaux (industrie aéro & vin)
+  {from:'LFBO',to:'LFPB',label:'Toulouse → Paris Le Bourget',dist_nm:360,demand:'MEDIUM',segment:'industriel',ac_types:['C750','C700','B738']},
+  {from:'LFBD',to:'LFPB',label:'Bordeaux → Paris Le Bourget',dist_nm:290,demand:'MEDIUM',segment:'corporate',ac_types:['C750','C700','B738']},
+];
+
+const AC_COLORS={'F-EVOK':'#C8A96E','F-EXZA':'#7EB8D4','F-LIMB':'#A8D5A2'};
+const PAX_NAMES=['Alexandre Moreau','Isabelle Petit','François Bernard','Marie Dubois','Julien Martin','Céline Robert','Antoine Simon','Nathalie Laurent','Pierre Leroy','Sandrine Thomas'];
+const PAX_REQS=['Repas végétarien','Assistance PMR','Allergie noix','Champagne millésimé','WiFi prioritaire','Presse quotidienne','Repas casher','Siège avant'];
+const CARGO_ITEMS=[
+  {desc:'Valises diplomates (3 pcs)',weight_kg:45,is_hazmat:false},
+  {desc:'Équipements médicaux stériles',weight_kg:12,is_hazmat:false},
+  {desc:'Documents confidentiels',weight_kg:2,is_hazmat:false},
+  {desc:'Bouteilles de vin (caisse)',weight_kg:18,is_hazmat:false,special:'Fragile'},
+  {desc:'Matières DGR UN2814',weight_kg:0.5,is_hazmat:true,hazmat_class:'6.2'},
+  {desc:'Bijoux & objets de valeur',weight_kg:3,is_hazmat:false,special:'Haute valeur'},
+];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let fleet=[],pilots=[],maintenance=[],flights=[],availability={};
+let selectedAC=null,currentFlight=null,leafletMap=null,acMarkers={};
+
+// ─────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────
+function sColor(s){return{AVAILABLE:'#A8D5A2',IN_FLIGHT:'#7EB8D4',MAINTENANCE:'#E8A87C',SCHEDULED:'#C8A96E',DUE:'#E8A87C',WARNING:'#C8A96E',OK:'#A8D5A2'}[s]||'#aaa';}
+function sLabel(s){return{AVAILABLE:'Disponible',IN_FLIGHT:'En vol',MAINTENANCE:'Maintenance',SCHEDULED:'Planifié',COMPLETED:'Terminé',CANCELLED:'Annulé',FERRY:'Vol de mise en place'}[s]||s;}
+function badge(s,l){const c=sColor(s);return`<span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}55">${l||sLabel(s)}</span>`;}
+function genNo(){return'WAB'+Math.floor(Math.random()*900+100);}
+function rand(a){return a[Math.floor(Math.random()*a.length)];}
+function showToast(msg,type='ok'){
+  const t=document.getElementById('toast'),c=type==='err'?'#E8A87C':'#A8D5A2';
+  t.style.cssText=`display:block;background:${c}22;border:1px solid ${c};color:${c}`;
+  t.textContent=msg;setTimeout(()=>t.style.display='none',3500);
+}
+function distNM(lat1,lon1,lat2,lon2){
+  const R=3440.065,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return Math.round(2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
+}
+
+// ─────────────────────────────────────────────
+// NAV
+// ─────────────────────────────────────────────
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const p=document.getElementById('page-'+id);
+  if(p)p.classList.add('active');
+  document.querySelector(`.nav-item[data-page="${id}"]`)?.classList.add('active');
+  if(id==='map')setTimeout(initMap,100);
+  if(id==='market')renderMarket();
+}
+document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>showPage(n.dataset.page)));
+
+// ─────────────────────────────────────────────
+// FETCH
+// ─────────────────────────────────────────────
+async function fetchAll(){
+  const[f,p,m,fl,av]=await Promise.all([
+    db.from('fleet').select('*'),
+    db.from('pilots').select('*'),
+    db.from('maintenance').select('*'),
+    db.from('flights').select('*').eq('week_start',WEEK_START),
+    db.from('pilot_availability').select('*').eq('week_start',WEEK_START),
+  ]);
+  fleet=f.data||[];pilots=p.data||[];maintenance=m.data||[];flights=fl.data||[];
+  availability={};(av.data||[]).forEach(a=>{availability[`${a.pilot_id}-${a.day_index}`]=a.availability;});
+  renderAll();
+  document.getElementById('sync-dot').className='dot';
+  document.getElementById('sync-label').textContent='Sync temps réel';
+  document.getElementById('sync-label').style.color='var(--green)';
+}
+
+function renderAll(){
+  renderDashboard();renderFleetCards('fleet-cards-dash',true);
+  renderFleetCards('fleet-cards-fleet',false);
+  renderMaintenance();renderAvailability();renderSchedule();renderPilotQuals();updateMapMarkers();
+}
+
+// ─────────────────────────────────────────────
+// REALTIME
+// ─────────────────────────────────────────────
+function setupRealtime(){
+  db.channel('fleet-rt').on('postgres_changes',{event:'*',schema:'public',table:'fleet'},p=>{
+    if(p.eventType==='UPDATE')fleet=fleet.map(f=>f.id===p.new.id?p.new:f);
+    renderDashboard();renderFleetCards('fleet-cards-dash',true);renderFleetCards('fleet-cards-fleet',false);
+    updateMapMarkers();
+    if(selectedAC?.id===p.new.id){selectedAC=p.new;renderFleetDetail();}
+  }).subscribe();
+  db.channel('flights-rt').on('postgres_changes',{event:'*',schema:'public',table:'flights'},p=>{
+    if(p.eventType==='INSERT')flights=[...flights,p.new];
+    else if(p.eventType==='UPDATE')flights=flights.map(f=>f.id===p.new.id?p.new:f);
+    else if(p.eventType==='DELETE')flights=flights.filter(f=>f.id!==p.old.id);
+    renderDashboard();renderSchedule();
+  }).subscribe();
+  db.channel('avail-rt').on('postgres_changes',{event:'*',schema:'public',table:'pilot_availability'},p=>{
+    if(p.new?.week_start===WEEK_START){availability[`${p.new.pilot_id}-${p.new.day_index}`]=p.new.availability;renderAvailability();}
+  }).subscribe();
+}
+
+// ─────────────────────────────────────────────
+// MAP
+// ─────────────────────────────────────────────
+function initMap(){
+  if(leafletMap)return;
+  leafletMap=L.map('map',{zoomControl:true}).setView([47.5,0],5);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:18}).addTo(leafletMap);
+  // Base markers
+  [{icao:'LFRS',name:'Nantes (Base)',lat:47.1569,lon:-1.6078},
+   {icao:'LFRE',name:'St-Nazaire (Base)',lat:47.3122,lon:-2.1564},
+   {icao:'LFRN',name:'Morlaix (Tech)',lat:48.5303,lon:-3.8278}].forEach(b=>{
+    L.circleMarker([b.lat,b.lon],{radius:6,color:'#C8A96E',fillColor:'#C8A96E',fillOpacity:.8,weight:2})
+     .bindPopup(`<b style="color:#C8A96E">${b.icao}</b><br>${b.name}`)
+     .addTo(leafletMap);
+  });
+  updateMapMarkers();
+}
+
+function updateMapMarkers(){
+  if(!leafletMap)return;
+  fleet.forEach(ac=>{
+    if(!ac.current_lat||!ac.current_lon)return;
+    const color=AC_COLORS[ac.id]||'#C8A96E';
+    const html=`<div style="color:${color};font-size:20px;text-shadow:0 0 8px ${color}88;transform:rotate(-45deg)">✈</div>`;
+    const icon=L.divIcon({html,className:'',iconSize:[24,24],iconAnchor:[12,12]});
+    if(acMarkers[ac.id])acMarkers[ac.id].remove();
+    acMarkers[ac.id]=L.marker([ac.current_lat,ac.current_lon],{icon})
+      .bindPopup(`<div style="background:#111827;color:#c8d0e7;padding:10px;border-radius:8px;min-width:160px">
+        <div style="font-family:monospace;font-size:14px;font-weight:800;color:${color}">${ac.id}</div>
+        <div style="font-size:12px;margin-top:4px">${ac.type}</div>
+        <div style="font-size:11px;color:#6b7a99;margin-top:4px">${ac.current_airport} · ${ac.current_parking||'—'}</div>
+        <div style="font-size:11px;color:#6b7a99">Statut : ${sLabel(ac.status)}</div>
+      </div>`)
+      .addTo(leafletMap);
+  });
+  // Map AC list
+  const el=document.getElementById('map-ac-list');
+  if(el)el.innerHTML=fleet.map(ac=>{
+    const color=AC_COLORS[ac.id]||'#C8A96E';
+    return`<div class="card" style="border-color:${color}44">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;color:${color}">${ac.id}</div>
+        ${badge(ac.status)}
+      </div>
+      <div style="font-size:11px;color:var(--text2)">${ac.type}</div>
+      <div style="font-size:12px;color:var(--text);font-weight:600;margin-top:6px">${ac.current_airport||ac.base} · ${ac.current_parking||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────
+function renderDashboard(){
+  const avail=fleet.filter(f=>f.status==='AVAILABLE').length;
+  const alerts=maintenance.filter(m=>m.status==='DUE'||m.status==='WARNING');
+  document.getElementById('kpi-avail').textContent=`${avail}/${fleet.length}`;
+  document.getElementById('kpi-avail').style.color=avail>0?'var(--green)':'var(--orange)';
+  document.getElementById('kpi-avail-sub').textContent='Appareils opérationnels';
+  document.getElementById('kpi-flights').textContent=flights.length||'—';
+  document.getElementById('kpi-flights-sub').textContent=flights.length?'Planning actif':'Aucun planning';
+  document.getElementById('kpi-maint').textContent=alerts.length;
+  document.getElementById('kpi-maint').style.color=alerts.length>0?'var(--orange)':'var(--green)';
+  document.getElementById('kpi-maint-sub').textContent=alerts.length>0?'Action requise':'Tout OK';
+  document.getElementById('kpi-pilots').textContent=pilots.length;
+  document.getElementById('kpi-pilots-sub').textContent=`${pilots.filter(p=>p.rank==='CPT').length} CPT · ${pilots.filter(p=>p.rank==='FO').length} FO`;
+  // Maint badge
+  document.querySelector('.nav-item[data-page="maintenance"] .nav-badge')?.remove();
+  if(alerts.length>0){const nb=document.createElement('span');nb.className='nav-badge';nb.textContent=alerts.length;document.querySelector('.nav-item[data-page="maintenance"]').appendChild(nb);}
+  // Upcoming
+  if(flights.length>0){
+    document.getElementById('upcoming-section').style.display='block';
+    document.getElementById('no-planning').style.display='none';
+    document.getElementById('upcoming-flights').innerHTML=flights.slice(0,4).map(f=>`
+      <div class="flight-row" onclick="openBriefing('${f.id}')">
+        ${f.is_ferry?'<div style="font-size:10px;color:var(--blue);background:#7EB8D422;border:1px solid #7EB8D444;border-radius:4px;padding:2px 7px;min-width:50px;text-align:center">FERRY</div>':''}
+        <div class="flight-no">${f.flight_no}</div>
+        <div style="flex:1"><div style="font-size:13px;color:var(--text);font-weight:600">${f.origin} → ${f.destination}</div><div style="font-size:11px;color:var(--text2)">${f.scheduled_date||''} · ${f.dep_time||''} · ${f.aircraft_id}</div></div>
+        <div style="font-size:11px;color:var(--blue)">${f.pax_count} PAX</div>
+        <div style="font-size:10px;color:var(--gold);background:#C8A96E22;padding:4px 11px;border-radius:5px;border:1px solid #C8A96E44">Briefing →</div>
+      </div>`).join('');
+  }else{document.getElementById('upcoming-section').style.display='none';document.getElementById('no-planning').style.display='block';}
+}
+
+// ─────────────────────────────────────────────
+// FLEET CARDS
+// ─────────────────────────────────────────────
+function renderFleetCards(cId,isDash){
+  const el=document.getElementById(cId);if(!el)return;
+  el.innerHTML=fleet.map(ac=>{
+    const color=AC_COLORS[ac.id]||'#C8A96E';
+    const sel=selectedAC?.id===ac.id&&!isDash;
+    return`<div class="ac-card${sel?' sel':''}" style="border-color:${sel?color:'var(--border)'}" onclick="${isDash?`showPage('fleet');setSelectedAC('${ac.id}')`:`setSelectedAC('${ac.id}')`}">
+      <div style="position:absolute;top:0;right:0;width:75px;height:75px;background:${color}08;border-radius:0 13px 0 75px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px">
+        <div><div class="ac-reg">${ac.id}</div><div class="ac-type">${ac.type}</div></div>
+        ${badge(ac.status)}
+      </div>
+      <div style="background:var(--card2);border-radius:7px;padding:8px 11px;margin-bottom:8px">
+        <div style="font-size:10px;color:var(--text2);margin-bottom:2px">Position actuelle</div>
+        <div style="font-size:12px;color:var(--text);font-weight:600">${ac.current_airport||ac.base} · ${ac.current_parking||'—'}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+        <div style="background:var(--card2);border-radius:7px;padding:7px 10px"><div style="font-size:10px;color:var(--text2)">Rayon d'action</div><div style="font-size:12px;color:var(--text);font-weight:700">${ac.range_nm} NM</div></div>
+        <div style="background:var(--card2);border-radius:7px;padding:7px 10px"><div style="font-size:10px;color:var(--text2)">Croisière</div><div style="font-size:12px;color:var(--text);font-weight:700">${ac.cruise_kt} kt</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setSelectedAC(id){
+  selectedAC=fleet.find(f=>f.id===id);
+  renderFleetCards('fleet-cards-fleet',false);
+  renderFleetDetail();
+  document.getElementById('fleet-detail').style.display='block';
+}
+
+function renderFleetDetail(){
+  if(!selectedAC)return;
+  const ac=selectedAC,acM=maintenance.filter(m=>m.aircraft_id===ac.id);
+  document.getElementById('fleet-detail-left').innerHTML=`
+    <div class="stitle">Détail — ${ac.id}</div>
+    <div class="detail-grid">
+      ${[['Type',ac.type],['ICAO',ac.icao],['Base',ac.base],['Statut',sLabel(ac.status)],['Autonomie',ac.range_nm+' NM'],['FL max','FL'+ac.max_fl],['Heures totales',(ac.total_hours||0).toLocaleString()+' h'],['Cycles',(ac.total_cycles||0).toLocaleString()],['MTOW',(ac.mtow_kg||0).toLocaleString()+' kg'],['Capacité PAX',ac.seats+' sièges'],['Capacité carbu.',(AC_PERF[ac.id]?.fuel_capacity_kg||'—')+' kg'],['Conso croisière',(AC_PERF[ac.id]?.fuel_flow_kg_h||'—')+' kg/h']].map(([l,v])=>`
+      <div class="detail-item"><div class="detail-label">${l}</div><div class="detail-val">${v}</div></div>`).join('')}
+    </div>
+    <div style="background:var(--card2);border-radius:7px;padding:11px 13px;margin-bottom:13px">
+      <div style="font-size:10px;color:var(--text2);margin-bottom:3px">Position actuelle (Supabase sync)</div>
+      <div style="font-size:13px;color:var(--blue);font-weight:700;font-family:'JetBrains Mono',monospace">${ac.current_airport} · ${ac.current_parking||'—'}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">Mis à jour : ${new Date(ac.updated_at).toLocaleString('fr-FR')}</div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:7px">Mettre à jour la position</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      ${[['LFRS','M-07'],['LFRS','M-11'],['LFRE','RAMP-3'],['LFPB','EXEC-1'],['EGLF','EXEC-2'],['LSZH','GATE-B'],['LIRA','APRON-1']].map(([a,p])=>`
+      <button class="pos-btn" onclick="updatePos('${ac.id}','${a}','${p}')">${a} ${p}</button>`).join('')}
+    </div>`;
+  document.getElementById('fleet-detail-right').innerHTML=`
+    <div class="stitle">Potentiel Maintenance — ${ac.id}</div>
+    ${acM.map(c=>`<div class="maint-row">
+      <div><div style="font-size:12px;font-weight:700;color:var(--text)">${c.check_type}</div>${c.interval_hours?`<div style="font-size:10px;color:var(--text2)">Intervalle : ${c.interval_hours}h</div>`:''}</div>
+      <div style="text-align:right"><div style="font-size:10px;color:var(--text2)">Prochain : ${c.next_due_date||'—'}</div>${badge(c.status,c.status==='DUE'?'⚠ ÉCHU':c.status==='WARNING'?'⚡ Proche':'✓ OK')}</div>
+    </div>`).join('')}
+    <div style="margin-top:11px;padding:9px 13px;background:var(--card2);border-radius:7px;font-size:10px;color:var(--text2)">Règlement (UE) 1321/2014 — CAMO/Part-M · OPS 1 DGAC France</div>`;
+}
+
+async function updatePos(id,airport,parking){
+  const ap=AIRPORTS[airport];
+  const upd={current_airport:airport,current_parking:parking,updated_at:new Date().toISOString()};
+  if(ap){upd.current_lat=ap.lat;upd.current_lon=ap.lon;}
+  await db.from('fleet').update(upd).eq('id',id);
+  showToast(`✓ ${id} → ${airport} ${parking}`);
+}
+
+// ─────────────────────────────────────────────
+// MAINTENANCE
+// ─────────────────────────────────────────────
+function renderMaintenance(){
+  const alerts=maintenance.filter(m=>m.status==='DUE'||m.status==='WARNING');
+  const banner=document.getElementById('maint-alerts-banner');
+  if(alerts.length>0){
+    banner.style.display='block';
+    document.getElementById('maint-alerts-title').textContent=`⚠ ${alerts.length} alerte(s) requièrent attention`;
+    document.getElementById('maint-alerts-list').innerHTML=alerts.map(a=>`<div style="font-size:11px;color:var(--text);margin-bottom:3px">· ${a.aircraft_id} — ${a.check_type} : ${a.status}</div>`).join('');
+  }else banner.style.display='none';
+  document.getElementById('maint-panels').innerHTML=fleet.map(ac=>{
+    const acM=maintenance.filter(m=>m.aircraft_id===ac.id);
+    return`<div class="card" style="margin-bottom:18px">
+      <div class="stitle">Potentiel Maintenance — ${ac.id} (${ac.type})</div>
+      ${acM.map(c=>`<div class="maint-row">
+        <div><div style="font-size:12px;font-weight:700;color:var(--text)">${c.check_type}</div>${c.interval_hours?`<div style="font-size:10px;color:var(--text2)">Intervalle : ${c.interval_hours}h</div>`:''}</div>
+        <div style="text-align:right"><div style="font-size:10px;color:var(--text2)">Prochain : ${c.next_due_date||'—'}</div>${badge(c.status,c.status==='DUE'?'⚠ ÉCHU':c.status==='WARNING'?'⚡ Proche':'✓ OK')}</div>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+// AVAILABILITY
+// ─────────────────────────────────────────────
+function renderAvailability(){
+  const tbody=document.getElementById('avail-tbody');if(!tbody)return;
+  const avColors={AM:'#A8D5A2',PM:'#7EB8D4',ALL:'#C8A96E'};
+  tbody.innerHTML=pilots.map(p=>`
+    <tr>
+      <td><span style="font-size:10px;color:${p.rank==='CPT'?'var(--gold)':'var(--blue)'};margin-right:5px">${p.rank}</span>${p.name.replace('Capt. ','').replace('F/O ','')}</td>
+      ${[0,1,2,3,4,5,6].map(i=>{
+        const key=`${p.id}-${i}`,val=availability[key],c=val?avColors[val]:null;
+        return`<td><div class="avail-cell" style="${c?`background:${c}44;border-color:${c};color:#fff`:''}" onclick="toggleAvail('${p.id}',${i},'${val||''}')">${val||'—'}</div></td>`;
+      }).join('')}
+    </tr>`).join('');
+}
+
+async function toggleAvail(pid,day,cur){
+  const cycle={'':'AM','AM':'PM','PM':'ALL','ALL':''};
+  const next=cycle[cur]||'';
+  const key=`${pid}-${day}`;
+  if(next)availability[key]=next;else delete availability[key];
+  renderAvailability();
+  if(next)await db.from('pilot_availability').upsert({pilot_id:pid,day_index:day,week_start:WEEK_START,availability:next,updated_at:new Date().toISOString()},{onConflict:'pilot_id,week_start,day_index'});
+  else await db.from('pilot_availability').delete().eq('pilot_id',pid).eq('week_start',WEEK_START).eq('day_index',day);
+}
+
+function renderPilotQuals(){
+  document.getElementById('pilot-quals').innerHTML=pilots.map(p=>`
+    <div style="display:flex;gap:9px;margin-bottom:7px;align-items:center">
+      <span style="color:${p.rank==='CPT'?'var(--gold)':'var(--blue)'};font-weight:700;min-width:28px;font-size:10px">${p.rank}</span>
+      <span style="min-width:155px;color:var(--text);font-size:11px">${p.name.replace('Capt. ','').replace('F/O ','')}</span>
+      <div style="display:flex;gap:4px">${(p.ratings||[]).map(r=>`<span style="background:var(--card2);border-radius:4px;padding:2px 7px;font-size:10px;color:var(--text)">${r}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+// ─────────────────────────────────────────────
+// GENERATE SCHEDULE
+// ─────────────────────────────────────────────
+async function generateSchedule(){
+  // Check pilot availability
+  const availP=pilots.filter(p=>[0,1,2,3,4,5,6].some(i=>availability[`${p.id}-${i}`]));
+  if(availP.length<2){showToast('Renseignez les disponibilités d\'au moins 2 pilotes','err');return;}
+
+  const btn=document.getElementById('gen-btn');
+  btn.textContent='⏳ Génération en cours…';btn.disabled=true;
+
+  // Delete existing flights for this week
+  await db.from('flights').delete().eq('week_start',WEEK_START);
+
+  const availFleet=fleet.filter(a=>a.status!=='MAINTENANCE');
+  if(!availFleet.length){showToast('Aucun appareil disponible','err');btn.textContent='🗓 Générer le planning semaine 24';btn.disabled=false;return;}
+
+  // Helper: check if pilot is rated for aircraft
+  function isRated(pilot, acIcao){
+    if(!pilot.ratings) return false;
+    // Handle both array and string formats from Supabase
+    if(Array.isArray(pilot.ratings)) return pilot.ratings.includes(acIcao);
+    if(typeof pilot.ratings === 'string'){
+      return pilot.ratings.replace(/[{}"]/g,'').split(',').map(r=>r.trim()).includes(acIcao);
+    }
+    return false;
+  }
+
+  // Helper: get compatible crew for aircraft
+  function getCrew(acIcao){
+    const compatible=pilots.filter(p=>isRated(p,acIcao));
+    const cpts=compatible.filter(p=>p.rank==='CPT');
+    const fos=compatible.filter(p=>p.rank==='FO');
+    if(!cpts.length||!fos.length) return null;
+    const cpt=rand(cpts);
+    const fo=rand(fos.filter(p=>p.id!==cpt.id));
+    if(!fo) return null;
+    return {cpt,fo};
+  }
+
+  // Track aircraft positions throughout the week
+  // Start from current Supabase positions
+  const acPositions={};
+  availFleet.forEach(a=>{ acPositions[a.id]=a.current_airport||a.base; });
+
+  const newFlights=[];
+  const routes=[...MARKET_ROUTES].sort(()=>Math.random()-.5).slice(0,7);
+
+  for(let i=0;i<routes.length;i++){
+    const r=routes[i];
+    const d=new Date('2026-06-09');
+    d.setDate(d.getDate()+(i%7));
+    const dateStr=d.toISOString().split('T')[0];
+
+    // Find compatible aircraft for this route
+    const compatAC=availFleet.filter(a=>{
+      if(!r.ac_types.includes(a.icao)) return false;
+      const fuel=calcFuel(a.id,r.dist_nm,a.cruise_kt);
+      return fuel&&fuel.feasible;
+    });
+    if(!compatAC.length) continue;
+
+    const ac=rand(compatAC);
+    const crew=getCrew(ac.icao);
+    if(!crew) continue;
+
+    const depH=7+Math.floor(Math.random()*9);
+    const depM=Math.floor(Math.random()*4)*15;
+    const dur=Math.round(r.dist_nm/(ac.cruise_kt/60));
+    const arrTotalMin=depH*60+depM+dur;
+
+    // ── FERRY ALLER: mise en place si l'avion n'est pas au bon aéroport ──
+    const currentPos=acPositions[ac.id];
+    if(currentPos && currentPos!==r.from){
+      const depAP=AIRPORTS[currentPos]||{lat:47.15,lon:-1.6};
+      const arrAP=AIRPORTS[r.from]||{lat:47.15,lon:-1.6};
+      const ferryDist=Math.round(distNM(depAP.lat,depAP.lon,arrAP.lat,arrAP.lon));
+      const ferryDur=Math.round(ferryDist/(ac.cruise_kt/60));
+      const ferryDepH=Math.max(6,depH-Math.ceil(ferryDur/60)-1);
+      const ferryArrMin=ferryDepH*60+ferryDur;
+
+      newFlights.push({
+        flight_no:genNo(),aircraft_id:ac.id,week_start:WEEK_START,
+        scheduled_date:dateStr,
+        dep_time:`${String(ferryDepH).padStart(2,'0')}:00`,
+        arr_time:`${String(Math.floor(ferryArrMin/60)).padStart(2,'0')}:${String(ferryArrMin%60).padStart(2,'0')}`,
+        origin:currentPos,destination:r.from,
+        route_label:`Mise en place ${currentPos} → ${r.from}`,
+        distance_nm:ferryDist,
+        duration:`${Math.floor(ferryDur/60)}h${String(ferryDur%60).padStart(2,'0')}`,
+        pax_count:0,segment:'ferry',planned_fl:'FL310',
+        alternate:r.from==='LFPB'?'LFPO':'LFRS',
+        captain_id:crew.cpt.id,fo_id:crew.fo.id,
+        status:'SCHEDULED',is_ferry:true,
+      });
+    }
+
+    // ── VOL COMMERCIAL ──
+    newFlights.push({
+      flight_no:genNo(),aircraft_id:ac.id,week_start:WEEK_START,
+      scheduled_date:dateStr,
+      dep_time:`${String(depH).padStart(2,'0')}:${String(depM).padStart(2,'0')}`,
+      arr_time:`${String(Math.floor(arrTotalMin/60)).padStart(2,'0')}:${String(arrTotalMin%60).padStart(2,'0')}`,
+      origin:r.from,destination:r.to,route_label:r.label,
+      distance_nm:r.dist_nm,
+      duration:`${Math.floor(dur/60)}h${String(dur%60).padStart(2,'0')}`,
+      pax_count:Math.floor(Math.random()*(ac.seats-1))+1,
+      segment:r.segment,
+      planned_fl:ac.max_fl>400?'FL430':'FL370',
+      alternate:r.to==='LFPB'?'LFPO':r.to==='EGLF'?'EGKB':'LFRS',
+      captain_id:crew.cpt.id,fo_id:crew.fo.id,
+      status:'SCHEDULED',is_ferry:false,
+    });
+
+    // Update tracked position: avion est maintenant à destination
+    acPositions[ac.id]=r.to;
+
+    // ── FERRY RETOUR BASE: si c'est le dernier vol de la semaine ou vendredi ──
+    const isLastRoute=(i===routes.length-1)||(i%7===4); // vendredi
+    if(isLastRoute && r.to!==ac.base){
+      const depAP2=AIRPORTS[r.to]||{lat:47.15,lon:-1.6};
+      const baseAP=AIRPORTS[ac.base]||{lat:47.15,lon:-1.6};
+      const retDist=Math.round(distNM(depAP2.lat,depAP2.lon,baseAP.lat,baseAP.lon));
+      const retDur=Math.round(retDist/(ac.cruise_kt/60));
+      const retDepH=Math.floor(arrTotalMin/60)+1;
+      const retArrMin=retDepH*60+60+retDur;
+      const retDate=new Date(d);
+
+      newFlights.push({
+        flight_no:genNo(),aircraft_id:ac.id,week_start:WEEK_START,
+        scheduled_date:retDate.toISOString().split('T')[0],
+        dep_time:`${String(retDepH).padStart(2,'0')}:00`,
+        arr_time:`${String(Math.floor(retArrMin/60)).padStart(2,'0')}:${String(retArrMin%60).padStart(2,'0')}`,
+        origin:r.to,destination:ac.base,
+        route_label:`Retour base ${r.to} → ${ac.base}`,
+        distance_nm:retDist,
+        duration:`${Math.floor(retDur/60)}h${String(retDur%60).padStart(2,'0')}`,
+        pax_count:0,segment:'ferry',planned_fl:'FL310',
+        alternate:'LFRS',
+        captain_id:crew.cpt.id,fo_id:crew.fo.id,
+        status:'SCHEDULED',is_ferry:true,
+      });
+      acPositions[ac.id]=ac.base;
+    }
+  }
+
+  if(newFlights.length>0){
+    const{error}=await db.from('flights').insert(newFlights);
+    if(error){
+      console.error('Supabase error:',error);
+      showToast('Erreur Supabase: '+error.message,'err');
+    } else {
+      const commercial=newFlights.filter(f=>!f.is_ferry).length;
+      const ferry=newFlights.filter(f=>f.is_ferry).length;
+      showToast(`✓ ${commercial} vols commerciaux + ${ferry} vols de mise en place générés !`);
+      showPage('schedule');
+    }
+  } else {
+    showToast('Aucun vol généré — vérifiez les qualifications et disponibilités','err');
+  }
+  btn.textContent='🗓 Générer le planning semaine 24';
+  btn.disabled=false;
+}
+
+// ─────────────────────────────────────────────
+// SCHEDULE
+// ─────────────────────────────────────────────
+function renderSchedule(){
+  const el=document.getElementById('schedule-list');
+  document.getElementById('sched-sub').textContent=`Semaine 24 · 9–15 Juin 2026 · ${flights.length} vol(s)`;
+  if(!flights.length){
+    el.innerHTML=`<div class="card" style="text-align:center;padding:38px"><div style="font-size:30px;margin-bottom:11px">📅</div><div style="font-size:13px;color:var(--text2)">Aucun vol planifié. Renseignez les disponibilités et générez le planning.</div></div>`;return;
+  }
+  el.innerHTML=flights.map(f=>{
+    const cpt=pilots.find(p=>p.id===f.captain_id),fo=pilots.find(p=>p.id===f.fo_id);
+    const isFerry=f.is_ferry;
+    return`<div class="flight-row" style="${isFerry?'border-color:#7EB8D444;opacity:.85':''}">
+      <div style="min-width:58px"><div style="font-size:10px;color:var(--text2)">${f.scheduled_date||''}</div><div style="font-size:12px;font-weight:700;color:var(--text)">${f.dep_time||''}</div></div>
+      <div style="width:1px;height:34px;background:var(--border)"></div>
+      ${isFerry?`<div style="font-size:10px;color:var(--blue);background:#7EB8D422;border:1px solid #7EB8D444;border-radius:4px;padding:2px 7px;text-align:center;font-weight:700">FERRY</div>`:''}
+      <div class="flight-no">${f.flight_no}</div>
+      <div style="flex:1"><div style="font-size:12px;color:var(--text);font-weight:600">${f.origin} → ${f.destination}</div><div style="font-size:11px;color:var(--text2)">${f.route_label||''}</div></div>
+      <div style="text-align:center;min-width:68px"><div style="font-size:10px;color:var(--text2)">Appareil</div><div style="font-size:11px;font-weight:700;color:var(--blue);font-family:'JetBrains Mono',monospace">${f.aircraft_id}</div></div>
+      <div style="text-align:center;min-width:95px"><div style="font-size:10px;color:var(--text2)">Équipage</div><div style="font-size:10px;color:var(--text)">${cpt?.name?.replace('Capt. ','')||'—'}</div><div style="font-size:10px;color:var(--text2)">${fo?.name?.replace('F/O ','')||'—'}</div></div>
+      ${!isFerry?`<button class="btn btn-blue" onclick="openBriefing('${f.id}')">📋 Briefing</button>`:`<div style="font-size:10px;color:var(--text2);padding:6px">Mise en place</div>`}
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+// MARKET
+// ─────────────────────────────────────────────
+function renderMarket(){
+  const dc={HIGH:'var(--green)',MEDIUM:'var(--gold)',LOW:'var(--orange)'};
+  document.getElementById('market-list').innerHTML=MARKET_ROUTES.map(r=>{
+    const compatAC=fleet.filter(a=>r.ac_types.includes(a.icao)&&a.range_nm>=r.dist_nm);
+    const fuel=compatAC.length?calcFuel(compatAC[0].id,r.dist_nm,compatAC[0].cruise_kt):null;
+    return`<div class="market-row">
+      <div style="min-width:48px;text-align:center"><div style="width:9px;height:9px;border-radius:50%;background:${dc[r.demand]||'#aaa'};margin:0 auto 3px"></div><div style="font-size:9px;color:var(--text2)">${r.demand}</div></div>
+      <div style="flex:1"><div style="font-size:13px;color:var(--text);font-weight:700">${r.label}</div><div style="font-size:11px;color:var(--text2)">${r.dist_nm} NM · ${r.segment}</div></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${compatAC.map(a=>`<span style="background:var(--card2);border-radius:4px;padding:2px 7px;font-size:10px;color:${AC_COLORS[a.id]||'var(--text)'};font-family:'JetBrains Mono',monospace;font-weight:700">${a.id}</span>`).join('')}
+        ${!compatAC.length?`<span style="font-size:10px;color:var(--orange)">Hors portée / type</span>`:''}
+      </div>
+      ${fuel?`<div style="font-size:10px;color:var(--text2);min-width:80px;text-align:right">${fuel.total.toLocaleString()} kg<br><span style="${fuel.feasible?'color:var(--green)':'color:var(--orange)'}">${fuel.feasible?'✓ Faisable':'⚠ Hors capacité'}</span></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+// SIMBRIEF API
+// ─────────────────────────────────────────────
+async function loadSimBrief(){
+  const btn=document.getElementById('simbrief-btn');
+  btn.disabled=true;btn.textContent='⏳ Chargement SimBrief…';
+  const f=currentFlight;
+  try{
+    const url=`https://www.simbrief.com/api/xml.fetcher.php?userid=${SIMBRIEF_PILOT_ID}&json=1`;
+    const resp=await fetch(url);
+    if(!resp.ok)throw new Error('SimBrief non disponible');
+    const data=await resp.json();
+    const ofp=data.params||{};
+    const fuel_data=data.fuel||{};
+    const wx_data=data.weather||{};
+    const route=data.general?.route||'Non disponible';
+    const origin_wx=data.origin?.metar||'Non disponible';
+    const dest_wx=data.destination?.metar||'Non disponible';
+    const alt_wx=data.alternate?.metar||'Non disponible';
+    document.getElementById('tab-simbrief').innerHTML=`
+      <div class="simbrief-panel">
+        <div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:12px;font-family:'Syne',sans-serif">📡 Plan de vol SimBrief — ${data.general?.icao_airline||'WAB'}${data.general?.flight_number||f.flight_no}</div>
+        <div class="brief-grid" style="margin-bottom:14px">
+          ${[
+            ['Départ',data.origin?.icao_code||f.origin],
+            ['Arrivée',data.destination?.icao_code||f.destination],
+            ['FL prévu',data.general?.initial_altitude||f.planned_fl],
+            ['Distance',`${data.general?.air_distance||f.distance_nm} NM`],
+            ['Durée estimée',data.times?.est_time_enroute||f.duration],
+            ['Carbu. total',`${fuel_data.plan_ramp||'—'} kg`],
+            ['Carbu. route',`${fuel_data.enroute_burn||'—'} kg`],
+            ['Réserve',`${fuel_data.reserve||'—'} kg`],
+          ].map(([l,v])=>`<div class="brief-item"><div class="brief-label">${l}</div><div class="brief-val">${v}</div></div>`).join('')}
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Route ATC</div>
+          <div style="font-size:11px;color:var(--text);font-family:'JetBrains Mono',monospace;background:var(--card2);padding:10px;border-radius:7px;line-height:1.6;word-break:break-all">${route}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          ${[['METAR Départ',origin_wx],['METAR Arrivée',dest_wx],['METAR Alternat',alt_wx]].map(([l,v])=>`
+          <div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">${l}</div><div class="metar" style="font-size:10px">${v}</div></div>`).join('')}
+        </div>
+        <div style="margin-top:12px;font-size:10px;color:var(--text3)">Données SimBrief temps réel · Pilot ID ${SIMBRIEF_PILOT_ID} · Dernière mise à jour : ${new Date().toLocaleTimeString('fr-FR')}</div>
+      </div>`;
+    switchTab('simbrief');
+    showToast('✓ Plan SimBrief chargé !');
+  }catch(e){
+    document.getElementById('tab-simbrief').innerHTML=`
+      <div style="background:#E8A87C11;border:1px solid var(--orange);border-radius:9px;padding:18px;text-align:center">
+        <div style="font-size:18px;margin-bottom:10px">⚠</div>
+        <div style="font-size:13px;color:var(--orange);font-weight:700;margin-bottom:8px">SimBrief non accessible</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.6">L'API SimBrief nécessite un plan de vol actif avec les aéroports ${f.origin}→${f.destination}.<br>Créez le plan sur <a href="https://dispatch.simbrief.com" target="_blank" style="color:var(--blue)">dispatch.simbrief.com</a> puis rechargez.</div>
+        <div style="margin-top:14px;font-size:11px;color:var(--text2)">Pilot ID : ${SIMBRIEF_PILOT_ID} · Erreur : ${e.message}</div>
+      </div>`;
+    switchTab('simbrief');
+    showToast('SimBrief : créez d\'abord le plan sur simbrief.com','err');
+  }
+  btn.disabled=false;btn.textContent='📡 Charger SimBrief';
+}
+
+// ─────────────────────────────────────────────
+// BRIEFING MODAL
+// ─────────────────────────────────────────────
+function openBriefing(fid){
+  currentFlight=flights.find(f=>f.id===fid);if(!currentFlight)return;
+  const f=currentFlight,ac=fleet.find(a=>a.id===f.aircraft_id);
+  const cpt=pilots.find(p=>p.id===f.captain_id),fo=pilots.find(p=>p.id===f.fo_id);
+  document.getElementById('modal-flightno').textContent=f.flight_no;
+  document.getElementById('modal-route').textContent=`${f.origin} → ${f.destination}`;
+  document.getElementById('modal-sub').textContent=`${f.route_label||''} · ${f.dep_time||''}→${f.arr_time||''} · ${f.aircraft_id}`;
+  document.getElementById('modal-ferry-badge').style.display=f.is_ferry?'inline-block':'none';
+
+  // GENERAL
+  const infos=[['N° de vol',f.flight_no],['Appareil',`${f.aircraft_id} (${ac?.type||'—'})`],['Départ',`${f.origin} — ${f.dep_time}`],['Arrivée',`${f.destination} — ${f.arr_time}`],['Commandant de bord',cpt?.name||'—'],['Copilote',fo?.name||'—'],['Distance',`${f.distance_nm} NM`],['Durée',f.duration],['Passagers',`${f.pax_count} PAX`],['Segment',f.segment],['FL prévu',f.planned_fl||'FL370'],['Alternat',f.alternate||'—']];
+  document.getElementById('tab-general').innerHTML=`
+    ${f.is_ferry?`<div class="ferry-banner">✈ VOL DE MISE EN PLACE — ${f.origin} → ${f.destination} · Sans passagers commerciaux</div>`:''}
+    <div class="brief-grid">${infos.map(([l,v])=>`<div class="brief-item"><div class="brief-label">${l}</div><div class="brief-val">${v}</div></div>`).join('')}</div>`;
+
+  // PAX
+  const paxList=Array.from({length:f.pax_count||0},(_,i)=>({name:PAX_NAMES[i%PAX_NAMES.length],seat:i+1,vip:Math.random()>.7,req:Math.random()>.5?rand(PAX_REQS):null}));
+  document.getElementById('tab-pax').innerHTML=f.pax_count>0
+    ?`<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:11px">Manifeste — ${f.pax_count} PAX</div>${paxList.map(p=>`<div class="pax-row"><div style="width:28px;height:28px;border-radius:50%;background:${p.vip?'#C8A96E33':'var(--card2)'};display:flex;align-items:center;justify-content:center;font-size:13px;border:1px solid ${p.vip?'var(--gold)':'var(--border)'}">${p.vip?'★':'○'}</div><div style="flex:1"><div style="font-size:12px;color:var(--text);font-weight:600">${p.name}${p.vip?` <span style="font-size:9px;color:var(--gold)">VIP</span>`:''}</div><div style="font-size:10px;color:var(--text2)">Siège ${p.seat}</div></div>${p.req?`<div style="background:#7EB8D422;border:1px solid var(--blue);border-radius:5px;padding:3px 9px;font-size:10px;color:var(--blue)">⚡ ${p.req}</div>`:''}</div>`).join('')}`
+    :`<div style="text-align:center;padding:30px;color:var(--text2)">✈ Vol de mise en place — aucun passager commercial</div>`;
+
+  // CARGO
+  const cargoList=f.is_ferry?[]:CARGO_ITEMS.slice(0,Math.floor(Math.random()*3)+1);
+  document.getElementById('tab-cargo').innerHTML=cargoList.length
+    ?`<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:11px">Rapport de fret</div>${cargoList.map(c=>`<div class="cargo-row ${c.is_hazmat?'hazmat':''}"><div style="display:flex;justify-content:space-between;align-items:center"><div>${c.is_hazmat?`<span style="background:#E8A87C22;border:1px solid var(--orange);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;color:var(--orange);margin-right:7px">⚠ DGR ${c.hazmat_class}</span>`:''}${c.special?`<span style="background:#C8A96E22;border:1px solid var(--gold);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;color:var(--gold)">★ ${c.special}</span>`:''}<div style="font-size:12px;color:var(--text);font-weight:600;margin-top:5px">${c.desc}</div></div><div style="font-size:12px;color:var(--blue);font-weight:700">${c.weight_kg} kg</div></div>${c.is_hazmat?`<div style="margin-top:7px;padding:7px 11px;background:#E8A87C11;border-radius:5px;font-size:10px;color:var(--orange)">IATA DGR 65e éd. · Déclaration obligatoire · Arrimage séparé</div>`:''}</div>`).join('')}<div class="cargo-row"><div style="font-size:11px;color:var(--text2)">Masse totale fret</div><div style="font-size:16px;color:var(--green);font-weight:800">${cargoList.reduce((a,c)=>a+c.weight_kg,0)} kg</div></div>`
+    :`<div style="text-align:center;padding:30px;color:var(--text2)">Aucun fret pour ce vol</div>`;
+
+  // WX (simulated with note to use Navigraph/SimBrief)
+  const wxApts=[{icao:f.origin,role:'Départ'},{icao:f.destination,role:'Destination'},{icao:f.alternate||'LFRS',role:'Alternat'}];
+  document.getElementById('tab-wx').innerHTML=`
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">Météorologie de vol</div>
+    <div style="background:#7EB8D411;border:1px solid #7EB8D433;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">📡 Cliquez sur "Charger SimBrief" pour obtenir les METARs temps réel</div>
+    ${wxApts.map(wx=>`<div class="wx-block"><div style="display:flex;gap:8px;margin-bottom:9px;align-items:center"><div style="font-size:13px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace">${wx.icao}</div><div style="font-size:10px;color:var(--text2)">${wx.role}</div><div style="font-size:10px;color:var(--text2)">— ${AIRPORTS[wx.icao]?.name||wx.icao}</div></div><div class="metar">METAR ${wx.icao} [Chargez SimBrief pour les données temps réel]</div><div class="taf">TAF ${wx.icao} [Chargez SimBrief pour les données temps réel]</div></div>`).join('')}
+    <div style="background:#E8A87C11;border-radius:7px;padding:9px 13px;border:1px solid #E8A87C33;font-size:11px;color:var(--orange)">⚠ Consultez Navigraph Weather ou l'ATIS officiel avant le vol</div>`;
+
+  // NOTAM
+  document.getElementById('tab-notam').innerHTML=`
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">NOTAMs actifs</div>
+    <div style="background:#7EB8D411;border:1px solid #7EB8D433;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">📡 NOTAMs disponibles via Navigraph Charts ou SIA France</div>
+    ${[{id:'A1234/26',airport:f.origin,type:'AERODROME',text:'Vérifiez les NOTAMs officiels sur Navigraph ou SIA avant le vol.',warn:false},{id:'B5678/26',airport:f.destination,type:'NAVIGATION',text:'Vérifiez les NOTAMs officiels sur Navigraph ou SIA avant le vol.',warn:false}].map(n=>`<div style="background:var(--card);border-radius:7px;padding:11px 14px;border:1px solid var(--border);margin-bottom:7px"><div style="display:flex;gap:9px;margin-bottom:7px;align-items:center"><div style="font-size:11px;font-weight:800;color:var(--gold);font-family:'JetBrains Mono',monospace">${n.id}</div>${badge('OK',n.type)}<div style="font-size:10px;color:var(--blue)">${n.airport}</div></div><div style="font-size:11px;color:var(--text)">${n.text}</div></div>`).join('')}`;
+
+  // FUEL (realistic per aircraft)
+  const fuel=ac?calcFuel(ac.id,f.distance_nm||300,ac.cruise_kt):null;
+  document.getElementById('tab-fuel').innerHTML=fuel
+    ?`<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">Plan carburant — ${ac?.type}</div>
+      <div style="background:var(--card2);border-radius:7px;padding:8px 13px;margin-bottom:13px;font-size:11px;color:var(--text2)">Capacité réservoirs ${ac?.id} : <span style="color:var(--text);font-weight:700">${fuel.capacity.toLocaleString()} kg</span> · Consommation croisière : <span style="color:var(--text);font-weight:700">${AC_PERF[ac?.id]?.fuel_flow_kg_h||'—'} kg/h</span></div>
+      ${[['Carburant de route (trip)',`${fuel.trip_fuel.toLocaleString()} kg`,`${f.distance_nm} NM @ ${ac?.cruise_kt} kt`],['Montée',`${fuel.climb.toLocaleString()} kg`,'Profil standard'],['Descente',`${fuel.descent.toLocaleString()} kg`,'Profil standard'],['Carburant alternat',`${fuel.alternate.toLocaleString()} kg`,f.alternate||'—'],['Réserve finale 45 min',`${fuel.reserve.toLocaleString()} kg`,'EU OPS 1.255'],['Contingence 5%',`${fuel.cont.toLocaleString()} kg`,'EU OPS'],['Roulage départ',`${fuel.taxi.toLocaleString()} kg`,'Estimé']].map(([l,v,s])=>`<div class="fuel-row"><div><div style="font-size:12px;color:var(--text);font-weight:600">${l}</div><div style="font-size:10px;color:var(--text2)">${s}</div></div><div style="font-size:12px;font-weight:700;color:var(--blue)">${v}</div></div>`).join('')}
+      <div class="fuel-total"><div><div style="font-size:13px;font-weight:800;color:var(--gold)">TOTAL EMPORT CARBURANT</div><div style="font-size:10px;color:${fuel.feasible?'var(--green)':'var(--orange)'};margin-top:2px">${fuel.feasible?`✓ Faisable — Marge : ${(fuel.capacity-fuel.total).toLocaleString()} kg`:'⚠ Dépasse la capacité — Vol impossible sans escale !'}</div></div><div style="font-size:20px;font-weight:900;color:var(--gold)">${fuel.total.toLocaleString()} kg</div></div>
+      <div style="font-size:10px;color:var(--text3);padding:7px 13px;margin-top:4px">📡 Utilisez SimBrief pour un calcul précis avec météo et vent réels</div>`
+    :`<div style="text-align:center;padding:30px;color:var(--text2)">Données carburant non disponibles</div>`;
+
+  switchTab('general');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');currentFlight=null;}
+function switchTab(id){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id)?.classList.add('active');
+  document.querySelectorAll('.modal-tab').forEach(t=>{if(t.getAttribute('onclick')===`switchTab('${id}')`)t.classList.add('active');});
+}
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+document.getElementById('sync-label').textContent='Connexion...';
+document.getElementById('sync-dot').className='dot red';
+fetchAll().then(setupRealtime);
+</script>
+</body>
+</html>

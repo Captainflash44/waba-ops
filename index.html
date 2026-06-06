@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>West Atlantic Business Aviation — Aviation d'affaires depuis Nantes</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#080808;
+  --white:#f8f6f2;
+  --grey:#3a3a3a;
+  --grey2:#6b6b6b;
+  --grey3:#b0aba3;
+  --grey4:#e8e4df;
+  --gold:#c9a84c;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--white);color:var(--black);font-family:'Inter',sans-serif;font-weight:300;overflow-x:hidden;}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 60px;height:76px;display:flex;align-items:center;justify-content:space-between;background:rgba(8,8,8,0.96);backdrop-filter:blur(12px);}
+.nav-logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--white);letter-spacing:8px;}
+.nav-links{display:flex;gap:40px;align-items:center;}
+.nav-links a{color:rgba(248,246,242,0.6);text-decoration:none;font-size:11px;letter-spacing:3px;text-transform:uppercase;transition:color .2s;}
+.nav-links a:hover{color:var(--white);}
+.nav-cta{background:var(--white);color:var(--black);padding:10px 24px;font-size:10px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;font-weight:500;transition:all .2s;}
+.nav-cta:hover{background:var(--gold);color:var(--white);}
+
+/* ── HERO ── */
+.hero{height:100vh;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1800&q=80') center/cover no-repeat;opacity:0.18;}
+.hero-lines{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(255,255,255,0.02) 80px);}
+.hero-content{position:relative;text-align:center;padding:0 40px;}
+.hero-eyebrow{font-size:10px;letter-spacing:6px;text-transform:uppercase;color:var(--grey3);margin-bottom:32px;font-family:'Inter',sans-serif;}
+.hero-logo{font-family:'Playfair Display',serif;font-size:clamp(72px,12vw,148px);font-weight:700;color:var(--white);letter-spacing:clamp(10px,2vw,24px);line-height:1;margin-bottom:32px;}
+.hero-tagline{font-family:'Cormorant Garamond',serif;font-size:clamp(16px,2.5vw,22px);color:var(--grey3);font-style:italic;font-weight:300;letter-spacing:2px;margin-bottom:52px;}
+.hero-divider{width:60px;height:1px;background:var(--grey3);margin:0 auto 52px;opacity:.4;}
+.hero-ctas{display:flex;gap:20px;justify-content:center;}
+.btn-primary{background:var(--white);color:var(--black);padding:16px 40px;font-size:11px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;font-weight:500;transition:all .25s;border:1px solid var(--white);}
+.btn-primary:hover{background:transparent;color:var(--white);}
+.btn-secondary{border:1px solid rgba(255,255,255,0.3);color:var(--white);padding:16px 40px;font-size:11px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;font-weight:300;transition:all .25s;}
+.btn-secondary:hover{border-color:var(--white);}
+.hero-scroll{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:3px;text-transform:uppercase;}
+.scroll-line{width:1px;height:40px;background:linear-gradient(to bottom,rgba(255,255,255,0.4),transparent);animation:scrollAnim 2s ease-in-out infinite;}
+@keyframes scrollAnim{0%,100%{opacity:.3;transform:scaleY(1);}50%{opacity:1;transform:scaleY(1.2);}}
+
+/* ── SECTION BASE ── */
+section{padding:120px 60px;}
+.section-label{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--grey2);margin-bottom:20px;font-family:'Inter',sans-serif;}
+.section-title{font-family:'Playfair Display',serif;font-size:clamp(36px,5vw,56px);font-weight:500;line-height:1.1;color:var(--black);margin-bottom:24px;}
+.section-title em{font-style:italic;font-weight:400;}
+.section-body{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--grey);line-height:1.7;font-weight:300;max-width:640px;}
+
+/* ── CHIFFRES ── */
+.numbers{background:var(--black);padding:80px 60px;}
+.numbers-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(255,255,255,0.08);}
+.number-item{background:var(--black);padding:52px 40px;text-align:center;}
+.number-val{font-family:'Playfair Display',serif;font-size:56px;font-weight:400;color:var(--white);line-height:1;margin-bottom:12px;}
+.number-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--grey3);}
+
+/* ── SERVICES ── */
+.services{background:var(--white);}
+.services-intro{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:start;margin-bottom:80px;}
+.services-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--grey4);}
+.service-card{background:var(--white);padding:48px 36px;border-top:2px solid transparent;transition:border-color .25s;}
+.service-card:hover{border-top-color:var(--black);}
+.service-icon{font-size:28px;margin-bottom:24px;opacity:.7;}
+.service-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:500;color:var(--black);margin-bottom:14px;}
+.service-desc{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--grey);line-height:1.6;font-weight:300;}
+
+/* ── FLOTTE ── */
+.fleet{background:#0f0f0f;padding:120px 60px;}
+.fleet-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:60px;}
+.fleet-title{font-family:'Playfair Display',serif;font-size:clamp(36px,5vw,52px);color:var(--white);font-weight:500;}
+.fleet-sub{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--grey3);font-style:italic;text-align:right;max-width:280px;}
+.fleet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;}
+.fleet-card{background:#161616;padding:52px 40px;border-top:1px solid rgba(255,255,255,.08);transition:border-color .3s;cursor:default;}
+.fleet-card:hover{border-top-color:rgba(255,255,255,.35);}
+.fleet-reg{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:var(--white);letter-spacing:6px;margin-bottom:6px;}
+.fleet-type{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--grey3);margin-bottom:40px;}
+.fleet-divider{width:32px;height:1px;background:rgba(255,255,255,.2);margin-bottom:32px;}
+.fleet-specs-list{display:flex;flex-direction:column;gap:16px;margin-bottom:36px;}
+.fleet-spec-row{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:14px;}
+.fleet-spec-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--grey2);}
+.fleet-spec-val{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--white);font-weight:300;}
+.fleet-services-title{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--grey2);margin-bottom:16px;}
+.fleet-services-list{display:flex;flex-direction:column;gap:8px;}
+.fleet-service-item{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--grey3);font-style:italic;padding-left:14px;border-left:1px solid rgba(255,255,255,.15);}
+
+/* ── DESTINATIONS ── */
+.destinations{background:var(--white);}
+.dest-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:60px;}
+.dest-card{position:relative;overflow:hidden;height:280px;}
+.dest-card.large{grid-column:span 1;height:420px;}
+.dest-img{width:100%;height:100%;object-fit:cover;filter:grayscale(20%);transition:all .5s;}
+.dest-card:hover .dest-img{transform:scale(1.05);filter:grayscale(0%);}
+.dest-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.7),transparent);}
+.dest-label{position:absolute;bottom:24px;left:28px;}
+.dest-city{font-family:'Playfair Display',serif;font-size:24px;color:var(--white);font-weight:500;margin-bottom:4px;}
+.dest-airport{font-size:10px;letter-spacing:3px;color:rgba(255,255,255,.6);text-transform:uppercase;}
+
+/* ── ABOUT ── */
+.about{background:var(--black);color:var(--white);padding:120px 60px;}
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:100px;align-items:center;}
+.about-content .section-label{color:var(--grey3);}
+.about-content .section-title{color:var(--white);}
+.about-content .section-body{color:var(--grey3);}
+.about-values{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:52px;}
+.about-value{border-top:1px solid rgba(255,255,255,.1);padding-top:20px;}
+.about-value-name{font-family:'Playfair Display',serif;font-size:16px;color:var(--white);margin-bottom:8px;}
+.about-value-desc{font-size:12px;color:var(--grey3);line-height:1.6;letter-spacing:.3px;}
+.about-image{position:relative;}
+.about-img-main{width:100%;aspect-ratio:3/4;object-fit:cover;filter:grayscale(20%);}
+.about-img-accent{position:absolute;bottom:-40px;right:-40px;width:55%;aspect-ratio:1;object-fit:cover;border:4px solid var(--black);filter:grayscale(20%);}
+.about-bases{margin-top:52px;display:flex;flex-direction:column;gap:16px;}
+.about-base{display:flex;align-items:center;gap:20px;border-top:1px solid rgba(255,255,255,.08);padding-top:16px;}
+.about-base-icao{font-family:'Playfair Display',serif;font-size:22px;color:var(--white);letter-spacing:3px;min-width:60px;}
+.about-base-info{font-size:12px;color:var(--grey3);line-height:1.5;}
+.about-base-role{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:2px;}
+
+/* ── CONTACT ── */
+.contact{background:var(--white);padding:120px 60px;}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:100px;align-items:start;}
+.contact-form{display:flex;flex-direction:column;gap:20px;}
+.form-group{display:flex;flex-direction:column;gap:8px;}
+.form-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--grey2);}
+.form-input{border:none;border-bottom:1px solid var(--grey4);padding:14px 0;font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--black);background:transparent;outline:none;transition:border-color .2s;}
+.form-input:focus{border-bottom-color:var(--black);}
+.form-input::placeholder{color:var(--grey3);}
+textarea.form-input{resize:none;height:100px;}
+.form-submit{background:var(--black);color:var(--white);border:none;padding:18px 48px;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;font-family:'Inter',sans-serif;font-weight:500;transition:background .2s;align-self:flex-start;margin-top:10px;}
+.form-submit:hover{background:var(--grey);}
+.contact-info{display:flex;flex-direction:column;gap:48px;}
+.contact-info-block{}
+.contact-info-label{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--grey2);margin-bottom:12px;}
+.contact-info-val{font-family:'Playfair Display',serif;font-size:22px;color:var(--black);font-weight:400;line-height:1.4;}
+.contact-info-sub{font-size:12px;color:var(--grey2);margin-top:4px;}
+
+/* ── FOOTER ── */
+footer{background:var(--black);padding:60px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.06);}
+.footer-logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--white);letter-spacing:8px;}
+.footer-links{display:flex;gap:40px;}
+.footer-links a{color:rgba(255,255,255,.3);text-decoration:none;font-size:10px;letter-spacing:2px;text-transform:uppercase;transition:color .2s;}
+.footer-links a:hover{color:var(--white);}
+.footer-copy{font-size:10px;color:rgba(255,255,255,.2);letter-spacing:1px;}
+
+
+/* ── RANGE MAP ── */
+.rangemap{background:var(--black);padding:120px 60px;}
+.rangemap-header{margin-bottom:40px;}
+.rangemap-controls{display:flex;gap:16px;margin-bottom:32px;flex-wrap:wrap;align-items:flex-end;}
+.range-select-group{display:flex;flex-direction:column;gap:8px;position:relative;}
+.range-select-label{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--grey2);}
+.range-select{background:#1a1a1a;border:1px solid rgba(255,255,255,.15);color:var(--white);padding:12px 20px;font-family:'Cormorant Garamond',serif;font-size:16px;outline:none;cursor:pointer;min-width:280px;appearance:none;-webkit-appearance:none;}
+.range-select:focus{border-color:rgba(255,255,255,.4);}
+.range-select option{background:#1a1a1a;}
+#range-map{height:520px;border:1px solid rgba(255,255,255,.08);}
+.map-legend{display:flex;gap:32px;margin-top:20px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:10px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--grey3);}
+.legend-dot{width:10px;height:10px;border-radius:50%;}
+.leaflet-container{background:#080808 !important;}
+.leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(0.85) contrast(1.1) saturate(0);}
+.leaflet-popup-content-wrapper{background:#111;border:1px solid rgba(255,255,255,.15);border-radius:0;box-shadow:none;}
+.leaflet-popup-content{color:var(--white);font-family:'Cormorant Garamond',serif;font-size:15px;margin:12px 16px;}
+.leaflet-popup-tip{background:#111;}
+.leaflet-popup-close-button{color:var(--grey3) !important;}
+
+
+.range-select-group{position:relative;}
+.suggestions-box{position:absolute;top:100%;left:0;right:0;background:#1a1a1a;border:1px solid rgba(255,255,255,.25);border-top:none;z-index:500;max-height:240px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.8);}
+.suggestion-item{padding:12px 16px;cursor:pointer;font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--white);border-bottom:1px solid rgba(255,255,255,.06);transition:background .15s;}
+.suggestion-item:hover{background:rgba(255,255,255,.08);}
+.suggestion-icao{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold);margin-right:10px;font-weight:700;}
+.ac-result-card{background:#0f0f0f;border:1px solid rgba(255,255,255,.1);padding:12px 18px;display:flex;flex-direction:column;gap:4px;min-width:160px;}
+.ac-result-card.ok{border-color:rgba(201,168,76,.5);}
+.ac-result-card.nok{border-color:rgba(255,255,255,.08);opacity:.5;}
+.ac-result-reg{font-family:'Playfair Display',serif;font-size:18px;color:white;letter-spacing:3px;}
+.ac-result-type{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--grey3);}
+.ac-result-status{font-size:11px;margin-top:6px;font-family:'Cormorant Garamond',serif;font-style:italic;}
+
+/* ── INTRANET BTN ── */
+.intranet-bar{background:var(--black);padding:14px 60px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.06);}
+.intranet-bar span{font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.3);text-transform:uppercase;}
+.intranet-link{font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.5);text-decoration:none;text-transform:uppercase;border:1px solid rgba(255,255,255,.15);padding:6px 16px;transition:all .2s;}
+.intranet-link:hover{border-color:rgba(255,255,255,.4);color:var(--white);}
+
+/* ── ANIMATIONS ── */
+.fade-up{opacity:0;transform:translateY(30px);transition:opacity .7s ease,transform .7s ease;}
+.fade-up.visible{opacity:1;transform:translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- Barre intranet -->
+<div class="intranet-bar">
+  <span>West Atlantic Business Aviation</span>
+  <a href="waba-ops.html" class="intranet-link">→ Intranet pilotes</a>
+</div>
+
+<!-- Navigation -->
+<nav>
+  <div class="nav-logo">WABA</div>
+  <div class="nav-links">
+    <a href="#services">Services</a>
+    <a href="#flotte">Flotte</a>
+    <a href="#rayon">Rayon d'action</a>
+    <a href="#destinations">Destinations</a>
+    <a href="#about">À propos</a>
+    <a href="#contact" class="nav-cta">Nous contacter</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-lines"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">Aviation d'affaires · Basée à Nantes · Europe & Monde</div>
+    <div class="hero-logo">WABA</div>
+    <div class="hero-divider"></div>
+    <div class="hero-tagline">Présents sur tout aéroport d'Europe —<br>et jusqu'aux cinq continents en BBJ</div>
+    <div class="hero-ctas">
+      <a href="#contact" class="btn-primary">Demander un devis</a>
+      <a href="#flotte" class="btn-secondary">Découvrir la flotte</a>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    <span>Découvrir</span>
+  </div>
+</section>
+
+<!-- Chiffres clés -->
+<div class="numbers">
+  <div class="numbers-grid">
+    <div class="number-item">
+      <div class="number-val">3</div>
+      <div class="number-label">Appareils en flotte</div>
+    </div>
+    <div class="number-item">
+      <div class="number-val">6 600</div>
+      <div class="number-label">NM d'autonomie max</div>
+    </div>
+    <div class="number-item">
+      <div class="number-val">2</div>
+      <div class="number-label">Bases opérationnelles</div>
+    </div>
+    <div class="number-item">
+      <div class="number-val">24/7</div>
+      <div class="number-label">Disponibilité opérationnelle</div>
+    </div>
+  </div>
+</div>
+
+<!-- Services -->
+<section class="services" id="services">
+  <div class="services-intro fade-up">
+    <div>
+      <div class="section-label">Nos services</div>
+      <div class="section-title">Une offre <em>sur mesure</em><br>pour chaque voyage</div>
+    </div>
+    <div class="section-body">
+      West Atlantic Business Aviation propose une gamme complète de services d'aviation d'affaires. Nos Citation couvrent l'ensemble de l'Europe sans escale. Notre BBJ2 relie directement Nantes — ou tout aéroport mondial — aux destinations les plus lointaines.
+    </div>
+  </div>
+  <div class="services-grid">
+    <div class="service-card fade-up">
+            <div class="service-name">Vols à la demande</div>
+      <div class="service-desc">Décollez selon votre agenda, depuis Nantes ou depuis tout aéroport européen. Nos Citations se mettent en place où vous êtes. Flexibilité totale, réponse en moins de 2 heures.</div>
+    </div>
+    <div class="service-card fade-up">
+            <div class="service-name">Affrètement longue distance</div>
+      <div class="service-desc">Notre BBJ2 relie directement n'importe quel aéroport mondial à votre destination. New York, Dubai, Singapour — sans escale, en cabine haut de gamme, jusqu'à 28 passagers.</div>
+    </div>
+    <div class="service-card fade-up">
+            <div class="service-name">Voyages d'entreprise</div>
+      <div class="service-desc">Solutions dédiées aux directions générales, conseils d'administration et équipes dirigeantes. Confidentialité absolue, productivité maximale en vol, ponctualité garantie.</div>
+    </div>
+    <div class="service-card fade-up">
+            <div class="service-name">Transport médical & humanitaire</div>
+      <div class="service-desc">Rapatriements sanitaires et transports médicaux urgents. Équipements médicaux embarqués, coordination avec les équipes au sol, disponibilité immédiate 24h/24.</div>
+    </div>
+    <div class="service-card fade-up">
+            <div class="service-name">Voyages privés & loisirs</div>
+      <div class="service-desc">Week-ends à Monaco, séjours en Toscane, voyages de noces. Chaque détail est orchestré avec soin — restauration à bord, conciergerie, transferts à destination.</div>
+    </div>
+    <div class="service-card fade-up">
+            <div class="service-name">Fret & cargo prioritaire</div>
+      <div class="service-desc">Transport express de marchandises sensibles, œuvres d'art, colis diplomatiques et matières dangereuses. Gestion DGR certifiée IATA, traçabilité totale, arrimage sécurisé.</div>
+    </div>
+    <div class="service-card fade-up">
+            <div class="service-name">Mise en place européenne</div>
+      <div class="service-desc">Nos Citations se positionnent sur tout aéroport d'affaires européen pour récupérer vos passagers. Farnborough, Le Bourget, Genève, Zurich — nous venons à vous.</div>
+    </div>
+    <div class="service-card fade-up">
+            <div class="service-name">Événements & grands déplacements</div>
+      <div class="service-desc">Coordination de plusieurs appareils pour événements sportifs, culturels ou corporates. Formule multi-vols sur mesure, gestion logistique complète depuis Nantes.</div>
+    </div>
+    <div class="service-card fade-up">
+            <div class="service-name">Vols diplomatiques & institutionnels</div>
+      <div class="service-desc">Discrétion maximale, protocole rigoureux. Nous accompagnons délégations officielles et représentations institutionnelles sur les routes les plus sensibles.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Flotte -->
+<section class="fleet" id="flotte">
+  <div class="fleet-header fade-up">
+    <div class="fleet-title" style="color:var(--white)">Notre flotte</div>
+    <div class="fleet-sub">Trois appareils d'exception, entretenus selon les standards les plus stricts de l'aviation civile française.</div>
+  </div>
+  <div class="fleet-grid">
+
+    <div class="fleet-card fade-up">
+      <div class="fleet-reg">F-EVOK</div>
+      <div class="fleet-type">Cessna Citation X · C750</div>
+      <div class="fleet-divider"></div>
+      <div class="fleet-specs-list">
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Rayon d'action</div>
+          <div class="fleet-spec-val">3 460 NM</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Passagers</div>
+          <div class="fleet-spec-val">Jusqu'à 8</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Vitesse croisière</div>
+          <div class="fleet-spec-val">470 kt — Mach 0.92</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Altitude de croisière</div>
+          <div class="fleet-spec-val">FL 510</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Couverture</div>
+          <div class="fleet-spec-val">Europe & Méditerranée</div>
+        </div>
+      </div>
+      <div class="fleet-services-title">Services à bord</div>
+      <div class="fleet-services-list">
+        <div class="fleet-service-item">Cabine pressurisée grand confort</div>
+        <div class="fleet-service-item">Sièges club en cuir pleine fleur</div>
+        <div class="fleet-service-item">Connectivité WiFi haut débit</div>
+        <div class="fleet-service-item">Restauration personnalisée</div>
+        <div class="fleet-service-item">Système de divertissement HD</div>
+      </div>
+    </div>
+
+    <div class="fleet-card fade-up">
+      <div class="fleet-reg">F-EXZA</div>
+      <div class="fleet-type">Cessna Citation Longitude · C700</div>
+      <div class="fleet-divider"></div>
+      <div class="fleet-specs-list">
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Rayon d'action</div>
+          <div class="fleet-spec-val">3 500 NM</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Passagers</div>
+          <div class="fleet-spec-val">Jusqu'à 8</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Vitesse croisière</div>
+          <div class="fleet-spec-val">476 kt — Mach 0.84</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Altitude de croisière</div>
+          <div class="fleet-spec-val">FL 450</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Couverture</div>
+          <div class="fleet-spec-val">Europe & Proche-Orient</div>
+        </div>
+      </div>
+      <div class="fleet-services-title">Services à bord</div>
+      <div class="fleet-services-list">
+        <div class="fleet-service-item">Cabine la plus silencieuse de sa catégorie</div>
+        <div class="fleet-service-item">Sièges ultra-larges à inclinaison complète</div>
+        <div class="fleet-service-item">WiFi & connectivité satellite</div>
+        <div class="fleet-service-item">Galley équipée — restauration gastronomique</div>
+        <div class="fleet-service-item">Espace bagages pressurisé 95 pi³</div>
+      </div>
+    </div>
+
+    <div class="fleet-card fade-up">
+      <div class="fleet-reg">F-LIMB</div>
+      <div class="fleet-type">Boeing Business Jet 2 · BBJ2</div>
+      <div class="fleet-divider"></div>
+      <div class="fleet-specs-list">
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Rayon d'action</div>
+          <div class="fleet-spec-val">6 600 NM</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Passagers</div>
+          <div class="fleet-spec-val">Jusqu'à 28</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Vitesse croisière</div>
+          <div class="fleet-spec-val">447 kt — Mach 0.82</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Altitude de croisière</div>
+          <div class="fleet-spec-val">FL 410</div>
+        </div>
+        <div class="fleet-spec-row">
+          <div class="fleet-spec-label">Couverture</div>
+          <div class="fleet-spec-val">Intercontinentale — Monde entier</div>
+        </div>
+      </div>
+      <div class="fleet-services-title">Services à bord</div>
+      <div class="fleet-services-list">
+        <div class="fleet-service-item">Suite privative & chambre avec lit queen</div>
+        <div class="fleet-service-item">Salon & salle de conférence séparés</div>
+        <div class="fleet-service-item">Salle de bains avec douche</div>
+        <div class="fleet-service-item">Chef de bord & hôtesse dédiés</div>
+        <div class="fleet-service-item">Connectivité Starlink haut débit</div>
+        <div class="fleet-service-item">Cuisine pleine taille — menu élaboré à la demande</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- Carte des trajets -->
+<section class="rangemap" id="rayon">
+  <div class="rangemap-header fade-up">
+    <div class="section-label" style="color:var(--grey3)">Planifiez votre vol</div>
+    <div class="fleet-title" style="color:var(--white);font-family:'Playfair Display',serif;font-size:clamp(36px,5vw,52px);font-weight:500;margin-bottom:16px;">De <em style="font-style:italic;font-weight:400;">votre aéroport</em><br>à votre destination</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--grey3);font-weight:300;max-width:560px;">Entrez un aéroport de départ et d'arrivée pour visualiser le trajet et découvrir quels appareils de notre flotte peuvent effectuer ce vol sans escale.</div>
+  </div>
+  <div class="rangemap-controls fade-up" style="align-items:flex-end;gap:12px;flex-wrap:wrap">
+    <div class="range-select-group" style="flex:1;min-width:220px">
+      <div class="range-select-label">Aéroport de départ — code OACI ou ville</div>
+      <input class="range-select" type="text" id="dep-input" placeholder="ex: Nantes, Paris, Dubai, EGLF..." oninput="searchAirport('dep')" autocomplete="off" onblur="setTimeout(()=>document.getElementById('dep-suggestions').innerHTML='',200)"/>
+      <div id="dep-suggestions"></div>
+    </div>
+    <div style="color:var(--grey3);font-size:20px;padding-bottom:14px">→</div>
+    <div class="range-select-group" style="flex:1;min-width:220px">
+      <div class="range-select-label">Aéroport d'arrivée — code OACI ou ville</div>
+      <input class="range-select" type="text" id="arr-input" placeholder="ex: Dubai, New York, Londres, OMDB..." oninput="searchAirport('arr')" autocomplete="off" onblur="setTimeout(()=>document.getElementById('arr-suggestions').innerHTML='',200)"/>
+      <div id="arr-suggestions"></div>
+    </div>
+    <button onclick="computeRoute()" style="background:white;color:black;border:none;padding:14px 28px;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;font-weight:500;font-family:'Inter',sans-serif;white-space:nowrap;height:52px">Calculer le trajet</button>
+  </div>
+  <div id="route-result" style="display:none;margin-bottom:20px" class="fade-up">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px">
+      <div style="background:#161616;padding:20px 24px;border-top:1px solid rgba(255,255,255,0.08)">
+        <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--grey2);margin-bottom:8px">Distance</div>
+        <div style="font-family:'Playfair Display',serif;font-size:32px;color:white;font-weight:500" id="result-dist">—</div>
+        <div style="font-size:10px;color:var(--grey3);margin-top:4px" id="result-cities">—</div>
+      </div>
+      <div style="background:#161616;padding:20px 24px;border-top:1px solid rgba(255,255,255,0.08);grid-column:span 2">
+        <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--grey2);margin-bottom:12px">Appareils disponibles sans escale</div>
+        <div id="result-aircraft" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+      </div>
+    </div>
+  </div>
+  <div id="range-map" class="fade-up"></div>
+  <div class="map-legend" style="margin-top:16px">
+    <div class="legend-item"><div class="legend-dot" style="background:white"></div>Aéroport de départ</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(201,168,76,0.9)"></div>Aéroport d'arrivée</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.5)"></div>Route grand cercle</div>
+  </div>
+</section>
+
+<!-- Destinations -->
+<section class="destinations" id="destinations">
+  <div class="fade-up">
+    <div class="section-label">Nos destinations</div>
+    <div class="section-title">Partout où vous <em>en avez besoin</em></div>
+  </div>
+  <div class="dest-grid">
+    <div class="dest-card large fade-up">
+      <img class="dest-img" src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80" alt="Paris"/>
+      <div class="dest-overlay"></div>
+      <div class="dest-label">
+        <div class="dest-city">Paris</div>
+        <div class="dest-airport">LFPB — Le Bourget</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <div class="dest-card fade-up">
+        <img class="dest-img" src="https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80" alt="Londres"/>
+        <div class="dest-overlay"></div>
+        <div class="dest-label">
+          <div class="dest-city">Londres</div>
+          <div class="dest-airport">EGLF — Farnborough</div>
+        </div>
+      </div>
+      <div class="dest-card fade-up">
+        <img class="dest-img" src="https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800&q=80" alt="Dubai"/>
+        <div class="dest-overlay"></div>
+        <div class="dest-label">
+          <div class="dest-city">Dubai</div>
+          <div class="dest-airport">OMDB — Dubai Intl</div>
+        </div>
+      </div>
+    </div>
+    <div class="dest-card fade-up">
+      <img class="dest-img" src="https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&q=80" alt="New York"/>
+      <div class="dest-overlay"></div>
+      <div class="dest-label">
+        <div class="dest-city">New York</div>
+        <div class="dest-airport">KTEB — Teterboro</div>
+      </div>
+    </div>
+    <div class="dest-card fade-up">
+      <img class="dest-img" src="https://images.unsplash.com/photo-1503917988258-f87a78e3c995?w=800&q=80" alt="Zurich"/>
+      <div class="dest-overlay"></div>
+      <div class="dest-label">
+        <div class="dest-city">Zurich</div>
+        <div class="dest-airport">LSZH — Zurich Airport</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- À propos -->
+<section class="about" id="about">
+  <div class="about-grid">
+    <div class="about-content fade-up">
+      <div class="section-label" style="color:var(--grey3)">À propos</div>
+      <div class="section-title" style="color:var(--white)">L'aviation d'affaires<br><em>à la bretonne</em></div>
+      <div class="section-body" style="color:var(--grey3);margin-top:24px;">
+        West Atlantic Business Aviation est une compagnie d'aviation d'affaires indépendante, fondée en Bretagne et ancrée dans les valeurs de rigueur, de discrétion et d'excellence qui caractérisent cette région.
+        <br><br>
+        Basée à Nantes-Atlantique, West Atlantic Business Aviation rayonne sur l'ensemble du continent européen grâce à ses deux Citation — et jusqu'aux confins du monde grâce à son Boeing Business Jet. Nos appareils se mettent en place sur tout aéroport d'Europe pour embarquer nos passagers là où ils se trouvent. Pour les destinations intercontinentales, le BBJ2 n'a aucune limite.
+      </div>
+      <div class="about-values">
+        <div class="about-value">
+          <div class="about-value-name">Sécurité</div>
+          <div class="about-value-desc">Certifiés DGAC, conformes EU OPS. Maintenance Part-M au centre technique de Morlaix.</div>
+        </div>
+        <div class="about-value">
+          <div class="about-value-name">Discrétion</div>
+          <div class="about-value-desc">Confidentialité absolue. Aucune information client ne quitte notre organisation.</div>
+        </div>
+        <div class="about-value">
+          <div class="about-value-name">Réactivité</div>
+          <div class="about-value-desc">Disponibles 24h/24, 7j/7. Départ possible en moins de 2 heures depuis nos bases.</div>
+        </div>
+        <div class="about-value">
+          <div class="about-value-name">Excellence</div>
+          <div class="about-value-desc">Pilotes expérimentés, cabines haut de gamme, service personnalisé à chaque vol.</div>
+        </div>
+      </div>
+      <div class="about-bases">
+        <div class="about-base">
+          <div class="about-base-icao">LFRS</div>
+          <div>
+            <div class="about-base-info">Nantes-Atlantique — Base opérationnelle</div>
+            <div class="about-base-role">Exploitation de l'ensemble de la flotte</div>
+          </div>
+        </div>
+        <div class="about-base">
+          <div class="about-base-icao">LFRU</div>
+          <div>
+            <div class="about-base-info">Morlaix-Ploujean — Centre technique</div>
+            <div class="about-base-role">Maintenance CAMO · Part-M · Révisions majeures</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="about-image fade-up">
+      <img class="about-img-main" src="https://images.unsplash.com/photo-1556388158-158ea5ccacbd?w=800&q=80" alt="Cockpit"/>
+      <img class="about-img-accent" src="https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?w=400&q=80" alt="Bretagne"/>
+    </div>
+  </div>
+</section>
+
+<!-- Contact -->
+<section class="contact" id="contact">
+  <div class="contact-grid">
+    <div class="fade-up">
+      <div class="section-label">Nous contacter</div>
+      <div class="section-title">Planifions<br><em>votre prochain vol</em></div>
+      <div class="section-body" style="margin-top:24px;">Notre équipe vous répond sous 2 heures pour toute demande de devis ou d'information.</div>
+      <div class="contact-form" style="margin-top:48px;">
+        <div class="form-group">
+          <label class="form-label">Nom & prénom</label>
+          <input class="form-input" type="text" placeholder="Jean Dupont"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" placeholder="jean.dupont@société.fr"/>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="form-group">
+            <label class="form-label">Départ</label>
+            <input class="form-input" type="text" placeholder="Nantes / LFRS"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination</label>
+            <input class="form-input" type="text" placeholder="Paris / LFPB"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Message</label>
+          <textarea class="form-input" placeholder="Décrivez votre voyage..."></textarea>
+        </div>
+        <button class="form-submit">Envoyer la demande</button>
+      </div>
+    </div>
+    <div class="contact-info fade-up">
+      <div class="contact-info-block">
+        <div class="contact-info-label">Base opérationnelle</div>
+        <div class="contact-info-val">Nantes-Atlantique — LFRS</div>
+        <div class="contact-info-sub">44340 Bouguenais, Loire-Atlantique</div>
+      </div>
+      <div class="contact-info-block">
+        <div class="contact-info-label">Centre technique</div>
+        <div class="contact-info-val">Morlaix-Ploujean<br>LFRU</div>
+        <div class="contact-info-sub">29600 Morlaix, Finistère</div>
+      </div>
+      <div class="contact-info-block">
+        <div class="contact-info-label">Disponibilité</div>
+        <div class="contact-info-val">24h/24 — 7j/7</div>
+        <div class="contact-info-sub">Réponse garantie sous 2 heures</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-logo">WABA</div>
+  <div class="footer-links">
+    <a href="#services">Services</a>
+    <a href="#flotte">Flotte</a>
+    <a href="#rayon">Rayon d'action</a>
+    <a href="#about">À propos</a>
+    <a href="#contact">Contact</a>
+  </div>
+  <div class="footer-copy">© 2026 West Atlantic Business Aviation</div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+
+// Normalize accents for search
+function normalizeStr(s) {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+}
+
+const AIRPORTS_DB = [
+  {icao:'LFRS',name:'Nantes-Atlantique',city:'Nantes',lat:47.1569,lon:-1.6078},
+  {icao:'LFRZ',name:'Saint-Nazaire Montoir',city:'Saint-Nazaire',lat:47.3122,lon:-2.1564},
+  {icao:'LFRU',name:'Morlaix-Ploujean',city:'Morlaix',lat:48.6032,lon:-3.8158},
+  {icao:'LFPB',name:'Paris Le Bourget',city:'Paris',lat:48.9694,lon:2.4414},
+  {icao:'LFPO',name:'Paris Orly',city:'Paris',lat:48.7233,lon:2.3794},
+  {icao:'LFPG',name:'Paris Charles de Gaulle',city:'Paris',lat:49.0097,lon:2.5478},
+  {icao:'EGLF',name:'Farnborough',city:'Londres',lat:51.2778,lon:-0.7764},
+  {icao:'EGKB',name:'Biggin Hill',city:'Londres',lat:51.3311,lon:0.0325},
+  {icao:'EGLL',name:'Heathrow',city:'Londres',lat:51.4775,lon:-0.4614},
+  {icao:'LSZH',name:'Zurich',city:'Zurich',lat:47.4647,lon:8.5492},
+  {icao:'LSGG',name:'Geneve Cointrin',city:'Geneve',lat:46.2381,lon:6.1089},
+  {icao:'LIRA',name:'Rome Ciampino',city:'Rome',lat:41.7994,lon:12.5949},
+  {icao:'LIRF',name:'Rome Fiumicino',city:'Rome',lat:41.8003,lon:12.2389},
+  {icao:'LEMD',name:'Madrid Barajas',city:'Madrid',lat:40.4936,lon:-3.5668},
+  {icao:'LEBL',name:'Barcelone',city:'Barcelone',lat:41.2971,lon:2.0785},
+  {icao:'EDDB',name:'Berlin Brandenburg',city:'Berlin',lat:52.3667,lon:13.5033},
+  {icao:'LOWW',name:'Vienne',city:'Vienne',lat:48.1103,lon:16.5697},
+  {icao:'EBBR',name:'Bruxelles',city:'Bruxelles',lat:50.9008,lon:4.4844},
+  {icao:'EIDW',name:'Dublin',city:'Dublin',lat:53.4213,lon:-6.2700},
+  {icao:'ESSA',name:'Stockholm Arlanda',city:'Stockholm',lat:59.6519,lon:17.9186},
+  {icao:'EKCH',name:'Copenhague',city:'Copenhague',lat:55.6181,lon:12.6561},
+  {icao:'LTFM',name:'Istanbul',city:'Istanbul',lat:41.2753,lon:28.7519},
+  {icao:'OMDB',name:'Dubai International',city:'Dubai',lat:25.2532,lon:55.3657},
+  {icao:'OMDW',name:'Dubai Al Maktoum',city:'Dubai',lat:24.8963,lon:55.1614},
+  {icao:'KTEB',name:'Teterboro',city:'New York',lat:40.8501,lon:-74.0608},
+  {icao:'KJFK',name:'John F. Kennedy',city:'New York',lat:40.6413,lon:-73.7781},
+  {icao:'LFBO',name:'Toulouse Blagnac',city:'Toulouse',lat:43.6293,lon:1.3638},
+  {icao:'LFML',name:'Marseille Provence',city:'Marseille',lat:43.4393,lon:5.2214},
+  {icao:'LFMN',name:'Nice Cote dAzur',city:'Nice',lat:43.6584,lon:7.2158},
+  {icao:'LFBD',name:'Bordeaux Merignac',city:'Bordeaux',lat:44.8283,lon:-0.7156},
+  {icao:'GMMN',name:'Casablanca Mohammed V',city:'Casablanca',lat:33.3675,lon:-7.5898},
+  {icao:'GMMX',name:'Marrakech Menara',city:'Marrakech',lat:31.6069,lon:-8.0363},
+  {icao:'DAAG',name:'Alger Houari Boumediene',city:'Alger',lat:36.6910,lon:3.2154},
+  {icao:'DTTA',name:'Tunis Carthage',city:'Tunis',lat:36.8510,lon:10.2272},
+  {icao:'HECA',name:'Le Caire',city:'Le Caire',lat:30.1219,lon:31.4056},
+  {icao:'BIKF',name:'Keflavik',city:'Reykjavik',lat:63.9850,lon:-22.6056},
+  {icao:'CYUL',name:'Montreal Trudeau',city:'Montreal',lat:45.4706,lon:-73.7408},
+  {icao:'CYYZ',name:'Toronto Pearson',city:'Toronto',lat:43.6772,lon:-79.6306},
+  {icao:'VABB',name:'Mumbai Chhatrapati Shivaji',city:'Mumbai',lat:19.0896,lon:72.8656},
+  {icao:'HKJK',name:'Nairobi Jomo Kenyatta',city:'Nairobi',lat:-1.3192,lon:36.9275},
+  {icao:'DNMM',name:'Lagos Murtala Muhammed',city:'Lagos',lat:6.5774,lon:3.3212},
+  {icao:'SBGR',name:'Sao Paulo Guarulhos',city:'Sao Paulo',lat:-23.4356,lon:-46.4731},
+  {icao:'FAOR',name:'Johannesburg OR Tambo',city:'Johannesburg',lat:-26.1392,lon:28.2460},
+  {icao:'YSSY',name:'Sydney',city:'Sydney',lat:-33.9461,lon:151.1772},
+  {icao:'VHHH',name:'Hong Kong',city:'Hong Kong',lat:22.3080,lon:113.9185},
+  {icao:'RJTT',name:'Tokyo Haneda',city:'Tokyo',lat:35.5533,lon:139.7811},
+  {icao:'WSSS',name:'Singapour Changi',city:'Singapour',lat:1.3644,lon:103.9915},
+  {icao:'LFLL',name:'Lyon Saint-Exupery',city:'Lyon',lat:45.7256,lon:5.0811},
+  {icao:'LFSB',name:'Bale-Mulhouse',city:'Bale',lat:47.5896,lon:7.5300},
+  {icao:'EHAM',name:'Amsterdam Schiphol',city:'Amsterdam',lat:52.3086,lon:4.7639},
+  {icao:'EDDF',name:'Francfort',city:'Francfort',lat:50.0333,lon:8.5706},
+  {icao:'EDDM',name:'Munich',city:'Munich',lat:48.3538,lon:11.7861},
+  {icao:'LIMC',name:'Milan Malpensa',city:'Milan',lat:45.6306,lon:8.7281},
+  {icao:'LKPR',name:'Prague',city:'Prague',lat:50.1008,lon:14.2600},
+  {icao:'EPWA',name:'Varsovie',city:'Varsovie',lat:52.1657,lon:20.9671},
+  {icao:'UUEE',name:'Moscou Cheremetievo',city:'Moscou',lat:55.9726,lon:37.4147},
+  {icao:'LFAT',name:'Le Touquet',city:'Le Touquet',lat:50.5174,lon:1.6206},
+  {icao:'LEBB',name:'Bilbao',city:'Bilbao',lat:43.3011,lon:-2.9106},
+];
+
+const FLEET = [
+  {reg:'F-EVOK', type:'Citation X', range:3460},
+  {reg:'F-EXZA', type:'Citation Longitude', range:3500},
+  {reg:'F-LIMB', type:'Boeing BBJ2', range:6600},
+];
+
+let rangeMap = null;
+let depMarker = null;
+let arrMarker = null;
+let routeLine = null;
+let selectedDep = null;
+let selectedArr = null;
+
+function distNM(lat1, lon1, lat2, lon2) {
+  const R = 3440.065;
+  const p1 = lat1*Math.PI/180, p2 = lat2*Math.PI/180;
+  const dp = (lat2-lat1)*Math.PI/180;
+  const dl = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function greatCirclePoints(lat1, lon1, lat2, lon2, steps) {
+  steps = steps || 100;
+  const p1=lat1*Math.PI/180, l1=lon1*Math.PI/180;
+  const p2=lat2*Math.PI/180, l2=lon2*Math.PI/180;
+  const d = 2*Math.asin(Math.sqrt(Math.sin((p2-p1)/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin((l2-l1)/2)**2));
+  if(d < 0.0001) return [[lat1,lon1],[lat2,lon2]];
+  const pts = [];
+  for(let i=0; i<=steps; i++) {
+    const f = i/steps;
+    const A = Math.sin((1-f)*d)/Math.sin(d);
+    const B = Math.sin(f*d)/Math.sin(d);
+    const x = A*Math.cos(p1)*Math.cos(l1) + B*Math.cos(p2)*Math.cos(l2);
+    const y = A*Math.cos(p1)*Math.sin(l1) + B*Math.cos(p2)*Math.sin(l2);
+    const z = A*Math.sin(p1) + B*Math.sin(p2);
+    pts.push([Math.atan2(z,Math.sqrt(x*x+y*y))*180/Math.PI, Math.atan2(y,x)*180/Math.PI]);
+  }
+  return pts;
+}
+
+function searchAirport(side) {
+  var raw = document.getElementById(side+'-input').value.trim();
+  var input = normalizeStr(raw);
+  var suggBox = document.getElementById(side+'-suggestions');
+  if(raw.length < 2) { suggBox.innerHTML=''; return; }
+  var matches = AIRPORTS_DB.filter(function(a) {
+    return normalizeStr(a.icao).indexOf(input) > -1 ||
+           normalizeStr(a.city).indexOf(input) > -1 ||
+           normalizeStr(a.name).indexOf(input) > -1;
+  }).slice(0,7);
+  if(!matches.length) { suggBox.innerHTML=''; return; }
+  var html = '<div class="suggestions-box">';
+  matches.forEach(function(a) {
+    html += '<div class="suggestion-item" onmousedown="selectAirport(\''+side+'\',\''+a.icao+'\')">'
+          + '<span class="suggestion-icao">'+a.icao+'</span>'
+          + a.name+' \u2014 '+a.city
+          + '</div>';
+  });
+  html += '</div>';
+  suggBox.innerHTML = html;
+}
+
+function selectAirport(side, icao) {
+  var ap = null;
+  for(var i=0; i<AIRPORTS_DB.length; i++) {
+    if(AIRPORTS_DB[i].icao === icao) { ap = AIRPORTS_DB[i]; break; }
+  }
+  if(!ap) return;
+  if(side === 'dep') selectedDep = ap;
+  else selectedArr = ap;
+  document.getElementById(side+'-input').value = ap.icao+' \u2014 '+ap.name;
+  document.getElementById(side+'-suggestions').innerHTML = '';
+}
+
+function computeRoute() {
+  if(!selectedDep || !selectedArr) {
+    alert('Veuillez selectionner un aeroport de depart et un aeroport d\'arrivee dans les suggestions.');
+    return;
+  }
+  if(!rangeMap) initRouteMap();
+
+  var dist = distNM(selectedDep.lat, selectedDep.lon, selectedArr.lat, selectedArr.lon);
+
+  if(routeLine) rangeMap.removeLayer(routeLine);
+  if(depMarker) rangeMap.removeLayer(depMarker);
+  if(arrMarker) rangeMap.removeLayer(arrMarker);
+
+  var gcPoints = greatCirclePoints(selectedDep.lat, selectedDep.lon, selectedArr.lat, selectedArr.lon, 100);
+  routeLine = L.polyline(gcPoints, {color:'rgba(255,255,255,0.75)', weight:2, dashArray:'8 5'}).addTo(rangeMap);
+
+  var depIcon = L.divIcon({html:'<div style="width:12px;height:12px;border-radius:50%;background:white;box-shadow:0 0 10px rgba(255,255,255,0.8)"></div>',className:'',iconSize:[12,12],iconAnchor:[6,6]});
+  depMarker = L.marker([selectedDep.lat, selectedDep.lon], {icon:depIcon}).bindPopup('<b>'+selectedDep.icao+'</b> '+selectedDep.name).addTo(rangeMap);
+
+  var arrIcon = L.divIcon({html:'<div style="width:12px;height:12px;border-radius:50%;background:#c9a84c;box-shadow:0 0 10px rgba(201,168,76,0.8)"></div>',className:'',iconSize:[12,12],iconAnchor:[6,6]});
+  arrMarker = L.marker([selectedArr.lat, selectedArr.lon], {icon:arrIcon}).bindPopup('<b>'+selectedArr.icao+'</b> '+selectedArr.name).addTo(rangeMap);
+
+  rangeMap.fitBounds([[selectedDep.lat,selectedDep.lon],[selectedArr.lat,selectedArr.lon]], {padding:[60,60]});
+
+  document.getElementById('route-result').style.display = 'block';
+  document.getElementById('result-dist').textContent = Math.round(dist).toLocaleString('fr-FR')+' NM';
+  document.getElementById('result-cities').textContent = selectedDep.city+' \u2192 '+selectedArr.city;
+
+  var acHtml = '';
+  FLEET.forEach(function(ac) {
+    var ok = dist <= ac.range;
+    var marge = ok ? Math.round(ac.range-dist) : Math.round(dist-ac.range);
+    acHtml += '<div class="ac-result-card '+(ok?'ok':'nok')+'">'
+            + '<div class="ac-result-reg">'+ac.reg+'</div>'
+            + '<div class="ac-result-type">'+ac.type+'</div>'
+            + '<div class="ac-result-status" style="color:'+(ok?'#c9a84c':'#666')+'">'
+            + (ok ? '\u2713 Sans escale \u2014 '+marge+' NM de marge' : '\u2717 Hors port\u00e9e \u2014 '+marge+' NM manquants')
+            + '</div></div>';
+  });
+  document.getElementById('result-aircraft').innerHTML = acHtml;
+}
+
+function initRouteMap() {
+  if(rangeMap) return;
+  rangeMap = L.map('range-map', {zoomControl:true, attributionControl:false}).setView([30,10],2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:10}).addTo(rangeMap);
+}
+
+var mapObserver = new IntersectionObserver(function(entries) {
+  entries.forEach(function(e) { if(e.isIntersecting) { initRouteMap(); mapObserver.disconnect(); } });
+}, {threshold:0.1});
+var mapEl = document.getElementById('range-map');
+if(mapEl) mapObserver.observe(mapEl);
+
+// Animations scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
