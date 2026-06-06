@@ -296,7 +296,7 @@ nav{flex:1;padding:10px 8px;overflow-y:auto;}
       <button class="modal-tab" onclick="switchTab('wx')">Météo</button>
       <button class="modal-tab" onclick="switchTab('notam')">NOTAM</button>
       <button class="modal-tab" onclick="switchTab('fuel')">Carburant</button>
-      <button class="modal-tab" onclick="switchTab('handling')">Handling</button>
+      <button class="modal-tab" onclick="switchTab('handling')">Services au sol</button>
     </div>
     <div class="modal-body">
       <div class="tab-content active" id="tab-general"></div>
@@ -1147,7 +1147,7 @@ async function loadSimBrief(){
           <div style="font-size:11px;color:var(--text);font-family:'JetBrains Mono',monospace;background:var(--card2);padding:10px;border-radius:7px;line-height:1.6;word-break:break-all">${route}</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          ${[['METAR Départ',origin_wx],['METAR Arrivée',dest_wx],['METAR Alternat',alt_wx]].map(([l,v])=>`
+          ${[['METAR Départ',origin_wx],['METAR Arrivée',dest_wx],['METAR Alternate',alt_wx]].map(([l,v])=>`
           <div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">${l}</div><div class="metar" style="font-size:10px">${v}</div></div>`).join('')}
         </div>
         <div style="margin-top:12px;font-size:10px;color:var(--text3)">Données SimBrief temps réel · Pilot ID ${SIMBRIEF_PILOT_ID} · Dernière mise à jour : ${new Date().toLocaleTimeString('fr-FR')}</div>
@@ -1181,7 +1181,7 @@ function openBriefing(fid){
   document.getElementById('modal-ferry-badge').style.display=f.is_ferry?'inline-block':'none';
 
   // GENERAL
-  const infos=[['N° de vol',f.flight_no],['Appareil',`${f.aircraft_id} (${ac?.type||'—'})`],['Départ',`${f.origin} — ${f.dep_time}`],['Arrivée',`${f.destination} — ${f.arr_time}`],['Commandant de bord',cpt?.name||'—'],['Copilote',fo?.name||'—'],['Distance',`${f.distance_nm} NM`],['Durée',f.duration],['Passagers',`${f.pax_count} PAX`],['Segment',f.segment],['FL prévu',f.planned_fl||'FL370'],['Alternat',f.alternate||'—']];
+  const infos=[['N° de vol',f.flight_no],['Appareil',`${f.aircraft_id} (${ac?.type||'—'})`],['Départ',`${f.origin} — ${f.dep_time}`],['Arrivée',`${f.destination} — ${f.arr_time}`],['Commandant de bord',cpt?.name||'—'],['Copilote',fo?.name||'—'],['Distance',`${f.distance_nm} NM`],['Durée',f.duration],['Passagers',`${f.pax_count} PAX`],['Segment',f.segment],['FL prévu',f.planned_fl||'FL370'],['Alternate',f.alternate||'—']];
   document.getElementById('tab-general').innerHTML=`
     ${f.is_ferry?`<div class="ferry-banner">✈ VOL DE MISE EN PLACE — ${f.origin} → ${f.destination} · Sans passagers commerciaux</div>`:''}
     <div class="brief-grid">${infos.map(([l,v])=>`<div class="brief-item"><div class="brief-label">${l}</div><div class="brief-val">${v}</div></div>`).join('')}</div>`;
@@ -1199,7 +1199,7 @@ function openBriefing(fid){
     :`<div style="text-align:center;padding:30px;color:var(--text2)">Aucun fret pour ce vol</div>`;
 
   // WX (simulated with note to use Navigraph/SimBrief)
-  const wxApts=[{icao:f.origin,role:'Départ'},{icao:f.destination,role:'Destination'},{icao:f.alternate||'LFRS',role:'Alternat'}];
+  const wxApts=[{icao:f.origin,role:'Départ'},{icao:f.destination,role:'Destination'},{icao:f.alternate||'LFRS',role:'Alternate'}];
   document.getElementById('tab-wx').innerHTML=`
     <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">Météorologie de vol</div>
     <div style="background:#7EB8D411;border:1px solid #7EB8D433;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">📡 Cliquez sur "Charger SimBrief" pour obtenir les METARs temps réel</div>
@@ -1229,7 +1229,7 @@ function openBriefing(fid){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--text2);line-height:1.6">
         <div>✓ <strong style="color:var(--text)">Carburant de route</strong> — A→B selon performances</div>
         <div>✓ <strong style="color:var(--text)">Contingence 5%</strong> — minimum légal (Basic Scheme)</div>
-        <div>✓ <strong style="color:var(--text)">Carburant alternat</strong> — B→Alternat obligatoire</div>
+        <div>✓ <strong style="color:var(--text)">Carburant alternate</strong> — B→Alternat obligatoire</div>
         <div style="color:var(--orange)">⚠ <strong>Réserve finale 30 min</strong> — MINIMUM ABSOLU intouchable</div>
       </div>
       <div style="margin-top:8px;font-size:11px;color:var(--text2);border-top:1px solid #7EB8D422;padding-top:8px">
@@ -1246,7 +1246,7 @@ function openBriefing(fid){
         ['Montée', fuel.climb, 'Profil standard', false],
         ['Descente', fuel.descent, 'Profil standard', false],
         ['Contingence 5%', fuel.cont, 'Basic Scheme EASA', false],
-        ['Carburant alternat', fuel.alternate, f.alternate||'—', false],
+        ['Carburant alternatee', fuel.alternate, f.alternate||'—', false],
         ['Réserve finale 30 min ⚠', fuel.reserve, 'MINIMUM ABSOLU — intouchable', true],
       ].map(([l,v,s,warn]) =>
         `<div style="background:var(--card);border-radius:7px;padding:9px 14px;border:1px solid ${warn?'var(--orange)':'var(--border)'};display:flex;justify-content:space-between;align-items:center">
@@ -1308,7 +1308,7 @@ function openBriefing(fid){
   // ── HANDLING TAB ──
   const handlingData = getHandlingData(f.destination, f.aircraft_id, ac);
   document.getElementById('tab-handling').innerHTML = `
-    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">Handling & Services au sol — ${f.destination}</div>
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">Services au sol — ${f.destination}</div>
 
     <!-- FBO & Parking -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
@@ -1336,13 +1336,36 @@ function openBriefing(fid){
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
       ${handlingData.services.map(s => `
       <div style="background:var(--card);border-radius:8px;padding:10px 12px;border:1px solid ${s.available?(s.required?'var(--gold)':'var(--border)'):'#333'};opacity:${s.available?1:0.5}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
           <div style="font-size:11px;color:${s.available?'var(--text)':'var(--text2)'};font-weight:600">${s.name}</div>
           <div style="font-size:14px">${s.available?(s.required?'✓':'○'):'✗'}</div>
         </div>
-        <div style="font-size:10px;color:var(--text2)">${s.note||''}</div>
-        ${s.available&&s.toggleable?`<button onclick="toggleService(this,'${s.name}')" style="margin-top:6px;width:100%;background:${s.required?'var(--gold)':'var(--card2)'};color:${s.required?'#000':'var(--text2)'};border:1px solid ${s.required?'var(--gold)':'var(--border)'};border-radius:4px;padding:3px;cursor:pointer;font-size:10px">${s.required?'Commandé':'Commander'}</button>`:''}
+        <div style="font-size:10px;color:var(--text2);margin-bottom:4px">${s.note||''}</div>
+        ${s.price_estimate!==null?`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <div style="font-size:9px;color:var(--text3)">${s.price_note||''}</div>
+          <div style="font-size:11px;font-weight:700;color:${s.price_estimate===0?'var(--green)':'var(--gold)'}">
+            ${s.price_estimate===0?'Inclus':('~'+s.price_estimate.toLocaleString('fr-FR')+'€')}
+          </div>
+        </div>`:''}
+        ${s.available&&s.toggleable?`<button onclick="toggleService(this,'${s.name}',${s.price_estimate||0})" style="width:100%;background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:4px;padding:4px;cursor:pointer;font-size:10px">Commander</button>`:''}
+        ${s.required&&!s.toggleable?`<div style="font-size:10px;color:var(--gold);margin-top:4px;font-weight:700">✓ Commandé automatiquement</div>`:''}
       </div>`).join('')}
+    </div>
+
+    <!-- Total estimé services -->
+    <div style="background:var(--card);border-radius:9px;padding:12px 16px;border:1px solid var(--border);margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:11px;font-weight:800;color:var(--text);letter-spacing:1px">COÛT ESTIMÉ SERVICES AU SOL</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px">Hors avitaillement carburant · Estimation indicative</div>
+        </div>
+        <div id="services-total" style="font-size:20px;font-weight:900;color:var(--gold);font-family:'JetBrains Mono',monospace">
+          ~${handlingData.services.filter(s=>s.required&&s.price_estimate).reduce((a,s)=>a+(s.price_estimate||0),0).toLocaleString('fr-FR')}€
+        </div>
+      </div>
+    </div>
+    <div style="display:none"><!-- placeholder -->
     </div>
 
     <!-- Fuel avitaillement -->
@@ -1423,13 +1446,18 @@ function updateFuelTotal(flightId){
   }
 }
 
-function toggleService(btn, name){
+let orderedServicesTotal = 0;
+function toggleService(btn, name, price){
   const isOrdered = btn.textContent.trim() === 'Commandé';
   btn.textContent = isOrdered ? 'Commander' : 'Commandé';
   btn.style.background = isOrdered ? 'var(--card2)' : 'var(--gold)';
   btn.style.color = isOrdered ? 'var(--text2)' : '#000';
   btn.style.borderColor = isOrdered ? 'var(--border)' : 'var(--gold)';
-  showToast(isOrdered ? name+' retiré des services commandés' : name+' ajouté aux services commandés');
+  // Update total
+  orderedServicesTotal += isOrdered ? -(price||0) : (price||0);
+  const totalEl = document.getElementById('services-total');
+  if(totalEl) totalEl.textContent = '~'+orderedServicesTotal.toLocaleString('fr-FR')+'€';
+  showToast(isOrdered ? name+' retiré — '+(-price||0)+'€' : name+' commandé — +'+( price||0)+'€');
 }
 
 // ── HANDLING DATABASE ──
