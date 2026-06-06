@@ -1053,7 +1053,7 @@ function renderSchedule(){
           return`<div style="display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:8px;padding:10px 14px;border-left:3px solid ${segColor}">
             <!-- Connecteur vertical -->
             ${idx>0?`<div style="position:absolute;left:20px;top:-8px;width:1px;height:8px;background:var(--border)"></div>`:''}
-            
+          
             <div style="min-width:44px;text-align:center">
               <div style="font-size:9px;font-weight:800;color:${segColor};letter-spacing:1px">${isFerry?(f.sequence===1?'↑ MEP':'↓ RTB'):'✈ PAX'}</div>
               <div style="font-size:10px;color:var(--text2);margin-top:2px">${f.dep_time||''}</div>
@@ -1229,7 +1229,7 @@ function openBriefing(fid){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--text2);line-height:1.6">
         <div>✓ <strong style="color:var(--text)">Carburant de route</strong> — A→B selon performances</div>
         <div>✓ <strong style="color:var(--text)">Contingence 5%</strong> — minimum légal (Basic Scheme)</div>
-        <div>✓ <strong style="color:var(--text)">Carburant alternate</strong> — B→Alternat obligatoire</div>
+        <div>✓ <strong style="color:var(--text)">Carburant alternate</strong> — B→Alternate obligatoire</div>
         <div style="color:var(--orange)">⚠ <strong>Réserve finale 30 min</strong> — MINIMUM ABSOLU intouchable</div>
       </div>
       <div style="margin-top:8px;font-size:11px;color:var(--text2);border-top:1px solid #7EB8D422;padding-top:8px">
@@ -1246,7 +1246,7 @@ function openBriefing(fid){
         ['Montée', fuel.climb, 'Profil standard', false],
         ['Descente', fuel.descent, 'Profil standard', false],
         ['Contingence 5%', fuel.cont, 'Basic Scheme EASA', false],
-        ['Carburant alternatee', fuel.alternate, f.alternate||'—', false],
+        ['Carburant alternate', fuel.alternate, f.alternate||'—', false],
         ['Réserve finale 30 min ⚠', fuel.reserve, 'MINIMUM ABSOLU — intouchable', true],
       ].map(([l,v,s,warn]) =>
         `<div style="background:var(--card);border-radius:7px;padding:9px 14px;border:1px solid ${warn?'var(--orange)':'var(--border)'};display:flex;justify-content:space-between;align-items:center">
@@ -1264,7 +1264,7 @@ function openBriefing(fid){
       <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:10px;letter-spacing:1px">✈ CARBURANT ADDITIONNEL — Décision commandant de bord</div>
       <div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.6">
         En tant que commandant de bord, vous pouvez emporter du carburant supplémentaire au-delà du minimum légal.
-        Motifs courants : météo dégradée, ATC restrictions, terrain exigeant, manque de données sur l'alternat.
+        Motifs courants : météo dégradée, ATC restrictions, terrain exigeant, manque de donnees sur l'alternate.
       </div>
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
         <div style="flex:1">
@@ -1492,16 +1492,19 @@ function getHandlingData(icao, aircraftId, ac){
   };
 
   // Build services list
+  const isPremium = ['LFPB','EGLF','OMDB','KTEB','LSZH','LSGG'].includes(icao);
+
   const services = [
-    {name:'Avitaillement Jet A-1', available:true, required:true, toggleable:false, note:'Quantité calculée auto'},
-    {name:'GPU (Groupe électrogène)', available:data.gpu===true, required:false, toggleable:data.gpu===true, note:data.gpu_note||''},
-    {name:'Eau potable', available:true, required:false, toggleable:true, note:'À commander'},
-    {name:'Vidange eaux usées', available:true, required:false, toggleable:true, note:'Selon besoins'},
-    {name:'Catering à bord', available:data.catering===true, required:false, toggleable:data.catering===true, note:isLarge?'Chef de bord — menu sur mesure':'Plateau repas selon commande'},
-    {name:'Nettoyage cabine', available:isLarge, required:isLarge, toggleable:false, note:isLarge?'FBO — équipe dédiée':'Équipage (Citations)'},
-    {name:'Transport PAX (limousine)', available:true, required:false, toggleable:true, note:'Sur demande — 48h à l\'avance'},
-    {name:'Salle VIP', available:data.gpu!==null, required:false, toggleable:true, note:'Disponibilité selon FBO'},
-    {name:'WiFi au sol', available:true, required:false, toggleable:true, note:'Disponible dans terminal'},
+    {name:'Avitaillement Jet A-1',available:true,required:true,toggleable:false,note:'Quantite depuis plan carburant',price_estimate:null,price_note:'Voir onglet Carburant'},
+    {name:'GPU (Groupe electrogene)',available:data.gpu===true,required:false,toggleable:data.gpu===true,note:data.gpu_note||'Non disponible',price_estimate:data.gpu===true?(isPremium?280:180):null,price_note:'Tarif horaire — 2h minimum'},
+    {name:'Eau potable',available:true,required:false,toggleable:true,note:'Remplissage reservoir',price_estimate:isPremium?80:50,price_note:'Forfait'},
+    {name:'Vidange eaux usees',available:true,required:false,toggleable:true,note:'Apres vol long courrier',price_estimate:isPremium?100:70,price_note:'Forfait'},
+    {name:'Catering a bord',available:data.catering===true,required:false,toggleable:data.catering===true,note:isLarge?'Chef de bord — menu sur mesure':'Plateau repas selon commande',price_estimate:data.catering===true?(isLarge?(isPremium?2200:1400):(isPremium?480:280)):null,price_note:isLarge?'BBJ2 — chef + service complet':'Citations — plateau par PAX'},
+    {name:'Nettoyage cabine',available:true,required:isLarge,toggleable:!isLarge,note:isLarge?'FBO — equipe dediee (obligatoire BBJ2)':'A charge equipage Citations',price_estimate:isLarge?(isPremium?650:400):0,price_note:isLarge?'Equipe FBO specialisee':'A charge equipage'},
+    {name:'Transport PAX (limousine)',available:true,required:false,toggleable:true,note:'Reservation 48h a avance',price_estimate:isPremium?380:220,price_note:'Par vehicule — transfert aeroport'},
+    {name:'Salon VIP / Lounge',available:data.gpu!==null,required:false,toggleable:true,note:'Accueil passagers avant embarquement',price_estimate:isPremium?320:150,price_note:'Par heure — minimum 2h'},
+    {name:'WiFi au sol',available:true,required:false,toggleable:false,note:'Connexion haut debit terminal',price_estimate:0,price_note:'Inclus dans frais de handling'},
+    {name:'Degivrage / Anti-icing',available:true,required:false,toggleable:true,note:'Sur conditions hivernales uniquement',price_estimate:isLarge?(isPremium?2200:1600):(isPremium?1100:750),price_note:'Type I ou IV selon conditions'},
   ];
 
   return {...data, services};
