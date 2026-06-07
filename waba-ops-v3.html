@@ -198,6 +198,9 @@ select.form-input{cursor:pointer;}
       <span class="theme-lbl" id="theme-lbl">MODE NUIT</span>
       <div class="theme-sw" id="theme-sw"></div>
     </div>
+    <a href="waba-pilot.html" target="_blank" style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:rgba(74,155,184,.08);border:1px solid rgba(74,155,184,.2);border-radius:6px;color:rgba(74,155,184,.9);font-size:11px;font-family:'DM Sans',sans-serif;text-decoration:none;">
+      <span>✈</span><span>Espace pilote</span><span style="margin-left:auto;font-size:9px;opacity:.6">↗</span>
+    </a>
     <button class="auth-btn" id="auth-btn" onclick="handleAuth()">
       <span>→</span><span id="auth-lbl">Se connecter</span>
     </button>
@@ -567,7 +570,7 @@ document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=
 // ═══════════════════════════════════
 // AUTH
 // ═══════════════════════════════════
-async function checkAuth(){const{data:{session}}=await db.auth.getSession();if(!session){window.location.href='login.html';return;}const{data:pilot}=await db.from('pilots').select('role,name').eq('user_id',session.user.id).single();if(!pilot||(pilot.role!=='ADMIN'&&pilot.role!=='DISPATCH')){window.location.href='waba-pilot.html';return;}const lbl=document.getElementById('auth-lbl');if(lbl)lbl.textContent=pilot.name?.split(' ')[0]||'Connecte';const btn=document.getElementById('auth-btn');if(btn){btn.style.borderColor='rgba(90,158,111,.4)';btn.style.color='var(--green)';}fetchAll().then(setupRealtime);}
+async function checkAuth(){const{data:{session}}=await db.auth.getSession();if(!session){window.location.href='login.html';return;}const{data:pilot}=await db.from('pilots').select('role,name').eq('user_id',session.user.id).single();if(!pilot||(pilot.role!=='ADMIN'&&pilot.role!=='DISPATCH')){window.location.href='waba-pilot.html';return;}const lbl=document.getElementById('auth-lbl');if(lbl)lbl.textContent=pilot.name?.split(' ')[0]||'Connecte';const btn=document.getElementById('auth-btn');if(btn){btn.style.borderColor='rgba(90,158,111,.4)';btn.style.color='var(--green)';}fetchAll().then(() => { setupRealtime(); startVirtualScheduler(); });}
 async function handleAuth(){const{data:{session}}=await db.auth.getSession();if(session){if(confirm('Voulez-vous vous deconnecter ?')){await db.auth.signOut();window.location.href='login.html';}}else window.location.href='login.html';}
 
 // ═══════════════════════════════════
@@ -727,7 +730,14 @@ function renderSchedule(){
           <div class="mono fw7" style="font-size:15px;color:${col}">${main.aircraft_id}</div>
           <div><div style="font-size:12px;font-weight:600">${main.origin} → ${main.destination}</div><div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${main.scheduled_date} - ${rot.length} segment(s)</div></div>
         </div>
-        <div style="text-align:right;font-size:11px"><div>${cpt?.name?.replace('Capt. ','')||'—'}</div><div style="color:var(--text2);font-size:10px">${fo?.name?.replace('F/O ','')||'—'}</div></div>
+        <div style="text-align:right">
+          ${main.reserved_by
+            ? `<div style="font-size:10px;color:var(--green);margin-bottom:2px">✓ Pilote réel assigné</div>`
+            : `<div style="font-size:10px;color:var(--text2);margin-bottom:2px">🤖 Équipage virtuel</div>`
+          }
+          <div style="font-size:11px">${cpt?.name?.replace('Capt. ','')||'—'}</div>
+          <div style="color:var(--text2);font-size:10px">${fo?.name?.replace('F/O ','')||'—'}</div>
+        </div>
       </div>
       ${rot.map(f=>{const iF=f.is_ferry,sc=iF?'var(--blue)':'var(--green)',sl=f.sequence===1?'MEP':f.sequence===3?'RTB':'PAX',done=f.status==='COMPLETED'||f.status==='SKIPPED';
       return`<div class="seg-row" style="border-left-color:${sc};opacity:${done?.6:1}">
@@ -975,7 +985,7 @@ function openBriefing(fid){
   const arrOblig=SVCS_ARR.filter(s=>s.req&&s.price).reduce((a,s)=>a+s.price,0);
   const totalEst=fuelEur+depOblig+arrOblig;
 
-  let _ordered={};
+  let _ordered={'dep':0,'arr':0};
   function svcCard(s,side){
     const id='svc-'+side+'-'+s.n.replace(/[^a-zA-Z]/g,'');
     return`<div class="service-card" id="${id}" style="border-color:${s.avail?(s.req?'rgba(184,151,62,.3)':'var(--border)'):'#2a2a2a'};opacity:${s.avail?1:.45}">
@@ -991,17 +1001,43 @@ function openBriefing(fid){
   }
   function toggleSvc(id,side,price){
     const btn=document.getElementById('btn-'+id);
+    const card=document.getElementById(id);
     if(!btn)return;
+    // isOrdered = currently ordered (btn says 'Commandé' = already ordered)
     const isOrdered=btn.textContent.trim()==='Commande';
+    // Toggle: if ordered -> remove, if not ordered -> add
     btn.textContent=isOrdered?'Commander':'Commande';
     btn.style.background=isOrdered?'var(--bg3)':'var(--gold)';
     btn.style.color=isOrdered?'var(--text2)':'#000';
     btn.style.borderColor=isOrdered?'var(--border)':'var(--gold)';
+    // Update card border to show ordered state
+    if(card){
+      card.style.borderColor=isOrdered?'var(--border)':'rgba(184,151,62,.5)';
+      card.style.background=isOrdered?'var(--card-bg)':'rgba(184,151,62,.06)';
+    }
+    // Update running total
     if(!_ordered[side])_ordered[side]=0;
     _ordered[side]+=isOrdered?-price:price;
+    // Update displayed cost
     const costEl=document.getElementById(side+'-cost');
-    if(costEl)costEl.textContent='~'+_ordered[side].toLocaleString('fr-FR')+'€ (+optionnels)';
-    showToast(isOrdered?`${id.split('-').pop()} retire`:`Service commande (+${price}€)`);
+    if(costEl){
+      const baseCost=parseInt(costEl.dataset.base||'0');
+      const total=baseCost+_ordered[side];
+      costEl.textContent='~'+total.toLocaleString('fr-FR')+'€';
+    }
+    // Update global total
+    const depCostEl=document.getElementById('dep-cost');
+    const arrCostEl=document.getElementById('arr-cost');
+    const totalEl=document.getElementById('total-cost');
+    if(totalEl&&depCostEl&&arrCostEl){
+      const depBase=parseInt(depCostEl.dataset.base||depCostEl.textContent.replace(/[^0-9]/g,'')||'0');
+      const arrBase=parseInt(arrCostEl.dataset.base||arrCostEl.textContent.replace(/[^0-9]/g,'')||'0');
+      const depOpt=_ordered['dep']||0;
+      const arrOpt=_ordered['arr']||0;
+      const fuelText=document.querySelector('#total-cost')?.dataset?.fuel||'0';
+      totalEl.textContent='~'+(depBase+arrBase+depOpt+arrOpt).toLocaleString('fr-FR')+'€';
+    }
+    showToast(isOrdered?'Service retire':'Service commande (+'+price+'€)');
   }
 
   document.getElementById('tab-sol').innerHTML=`
@@ -1009,8 +1045,8 @@ function openBriefing(fid){
       <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:10px">COUT ESTIME DU VOL</div>
       <div class="g4 mb8">
         <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Carburant</div><div class="mono fw7" style="font-size:15px;color:var(--gold)">~${fuelEur.toLocaleString('fr-FR')}€</div><div style="font-size:9px;color:var(--text3)">${totalFuel.toLocaleString('fr-FR')} kg x ${fuelCostKg}€/kg</div></div>
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services depart</div><div class="mono fw7" style="font-size:15px;color:var(--blue)" id="dep-cost">~${depOblig.toLocaleString('fr-FR')}€</div></div>
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services arrivee</div><div class="mono fw7" style="font-size:15px;color:var(--blue)" id="arr-cost">~${arrOblig.toLocaleString('fr-FR')}€</div></div>
+        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services depart</div><div class="mono fw7" style="font-size:15px;color:var(--blue)" id="dep-cost" data-base="${depOblig}">~${depOblig.toLocaleString('fr-FR')}€</div></div>
+        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services arrivee</div><div class="mono fw7" style="font-size:15px;color:var(--blue)" id="arr-cost" data-base="${arrOblig}">~${arrOblig.toLocaleString('fr-FR')}€</div></div>
         <div style="background:var(--card-bg);border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--gold)"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Total estime</div><div class="mono fw7" style="font-size:15px;color:var(--gold)" id="total-cost">~${totalEst.toLocaleString('fr-FR')}€</div></div>
       </div>
       <div style="font-size:10px;color:var(--text3)">Estimations indicatives - hors taxes aero portuaires et redevances</div>
@@ -1046,6 +1082,101 @@ function updateFuel(fid){const extra=parseInt(document.getElementById('fuel-extr
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');currentFlight=null;}
 function switchTab(id){document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+id)?.classList.add('active');document.querySelectorAll('.modal-tab').forEach(t=>{if(t.getAttribute('onclick')===`switchTab('${id}')`)t.classList.add('active');});}
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+
+// ═══════════════════════════════════════════
+// ÉQUIPAGES VIRTUELS — Scheduler automatique
+// ═══════════════════════════════════════════
+function startVirtualScheduler() {
+  // Vérifier toutes les minutes si des vols virtuels doivent être complétés
+  setInterval(checkVirtualFlights, 60000);
+  checkVirtualFlights(); // Run immediately
+}
+
+async function checkVirtualFlights() {
+  const now = new Date();
+  const pending = flights.filter(f =>
+    f.status === 'SCHEDULED' &&
+    (f.is_virtual === true || !f.reserved_by) &&
+    f.actual_arr_utc && new Date(f.actual_arr_utc) <= now
+  );
+
+  for (const f of pending) {
+    // Marquer comme complété par équipage virtuel
+    await db.from('flights').update({
+      status: 'COMPLETED',
+      updated_at: new Date().toISOString(),
+    }).eq('id', f.id);
+
+    // Mettre à jour la position de l'avion
+    if (f.destination) {
+      const ap = AP[f.destination] || {};
+      await db.from('fleet').update({
+        current_airport: f.destination,
+        current_lat: ap.lat || null,
+        current_lon: ap.lon || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', f.aircraft_id);
+    }
+    console.log(`[VC] Vol virtuel ${f.flight_no} complété → ${f.destination}`);
+  }
+
+  // Vols en cours (décollés mais pas encore arrivés) — afficher sur la carte
+  const inFlight = flights.filter(f =>
+    f.status === 'SCHEDULED' &&
+    f.actual_dep_utc && new Date(f.actual_dep_utc) <= now &&
+    f.actual_arr_utc && new Date(f.actual_arr_utc) > now
+  );
+  updateFlightLines(inFlight);
+}
+
+// Afficher les lignes de vol en cours sur la carte
+let flightLines = {};
+function updateFlightLines(inFlightList) {
+  if (!leafletMap) return;
+  // Supprimer les anciennes lignes
+  Object.values(flightLines).forEach(l => l.remove());
+  flightLines = {};
+
+  inFlightList.forEach(f => {
+    const depAP = AP[f.origin] || {};
+    const arrAP = AP[f.destination] || {};
+    if (!depAP.lat || !arrAP.lat) return;
+
+    // Calculer position intermédiaire selon progression du vol
+    const depTime = new Date(f.actual_dep_utc).getTime();
+    const arrTime = new Date(f.actual_arr_utc).getTime();
+    const now = Date.now();
+    const progress = Math.max(0, Math.min(1, (now - depTime) / (arrTime - depTime)));
+    const curLat = depAP.lat + (arrAP.lat - depAP.lat) * progress;
+    const curLon = depAP.lon + (arrAP.lon - depAP.lon) * progress;
+    const col = AC_COLORS[f.aircraft_id] || '#B8973E';
+
+    // Ligne pointillée
+    const line = L.polyline([[depAP.lat, depAP.lon],[arrAP.lat, arrAP.lon]], {
+      color: col, weight: 1.5, dashArray: '6 4', opacity: 0.5
+    }).addTo(leafletMap);
+
+    // Icône avion en vol
+    const icon = L.divIcon({
+      html: `<div style="color:${col};font-size:16px;transform:rotate(${getBearing(depAP.lat,depAP.lon,arrAP.lat,arrAP.lon)}deg);text-shadow:0 0 6px ${col}88">✈</div>`,
+      className: '', iconSize: [16,16], iconAnchor: [8,8]
+    });
+    const marker = L.marker([curLat, curLon], { icon })
+      .bindPopup(`<div style="font-family:monospace;font-weight:700;color:${col}">${f.flight_no}</div><div>${f.origin} → ${f.destination}</div><div style="font-size:11px;color:#888">${Math.round(progress*100)}% · ${f.aircraft_id}</div>`)
+      .addTo(leafletMap);
+
+    flightLines[f.id] = { remove: () => { line.remove(); marker.remove(); } };
+  });
+}
+
+function getBearing(lat1, lon1, lat2, lon2) {
+  const toRad = d => d * Math.PI / 180;
+  const dLon = toRad(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
 
 // INIT
 document.getElementById('sync-lbl').textContent='Connexion...';
