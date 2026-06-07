@@ -1207,35 +1207,140 @@ let _bOrdered={dep:0,arr:0};
   }
 
 
+  // ── SOL TAB — built via DOM, not template literals ──
   _bOrdered={dep:0,arr:0};
-  // Store values for total calculation
-  const _solFuelEur=fuelEur, _solDepObl=depObl, _solArrObl=arrObl;
-  document.getElementById('btab-sol').innerHTML=`
-    <div style="background:rgba(184,151,62,.1);border:1px solid rgba(184,151,62,.3);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px">
-      <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:10px">COUT ESTIME DU VOL</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Carburant</div><div class="mono fw7" style="color:var(--gold)" id="bsol-fuel-cost">~${fuelEur.toLocaleString('fr-FR')}€</div></div>
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services dep</div><div class="mono fw7" style="color:var(--blue)" id="bsol-dep-cost">~${depObl.toLocaleString('fr-FR')}€</div></div>
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services arr</div><div class="mono fw7" style="color:var(--blue)" id="bsol-arr-cost">~${arrObl.toLocaleString('fr-FR')}€</div></div>
-        <div style="background:var(--card-bg);border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--gold)"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Total estimé</div><div class="mono fw7" style="color:var(--gold)" id="bsol-total">~${totalEst.toLocaleString('fr-FR')}€</div></div>
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div><div class="mono fw7" style="font-size:10px;letter-spacing:1px">DEPART — ${f.origin} · ${fDep.fbo}</div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div class="bitem"><div class="blbl">FBO</div><div class="bval">${fDep.fbo}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${fDep.contact}</div></div><div class="bitem"><div class="blbl">Parking</div><div class="bval mono">${fDep.parking}</div></div></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:16px">${depSvcs.map(s=>sCard(s,'dep')).join('')}</div>
-    <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:var(--gold)"></div><div class="mono fw7" style="font-size:10px;letter-spacing:1px">ARRIVEE — ${f.destination} · ${fArr.fbo}</div></div>
-    ${fArr.lim?.length?`<div style="background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px"><div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:5px">LIMITATIONS</div>${fArr.lim.map(l=>`<div style="font-size:11px;margin-bottom:3px">· ${l}</div>`).join('')}</div>`:''}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div class="bitem"><div class="blbl">FBO</div><div class="bval">${fArr.fbo}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${fArr.contact}</div></div><div class="bitem"><div class="blbl">Parking</div><div class="bval mono">${fArr.parking}</div></div></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px">${arrSvcs.map(s=>sCard(s,'arr')).join('')}</div>`;
+  const isLarge=f.aircraft_id==='F-LIMB';
+  const fDep=getFBO(f.origin,isLarge),fArr=getFBO(f.destination,isLarge);
+  const fuelEx2=parseInt(localStorage.getItem('fe_'+f.id)||'0');
+  const totFuel=fuel?fuel.tot+fuelEx2:0;
+  const fuelCostKg=['EGLF','KTEB','OMDB','LSZH'].includes(f.destination)?1.35:0.98;
+  const fuelEur=Math.round(totFuel*fuelCostKg);
+  const isPremArr=['LFPB','EGLF','OMDB','KTEB','LSZH','LSGG'].includes(f.destination);
+  const isPremDep=['LFPB','EGLF','OMDB','KTEB','LSZH','LSGG'].includes(f.origin);
 
-  // Set data attributes for total calculation
-  const fuelEl=document.getElementById('bsol-fuel-cost');
-  const depEl=document.getElementById('bsol-dep-cost');
-  const arrEl=document.getElementById('bsol-arr-cost');
-  if(fuelEl)fuelEl.dataset.cost=_solFuelEur;
-  if(depEl)depEl.dataset.base=_solDepObl;
-  if(arrEl)arrEl.dataset.base=_solArrObl;
+  const mkSvcs=(dep)=>{
+    const p=dep?isPremDep:isPremArr;
+    const fbo=dep?fDep:fArr;
+    return [
+      {n:'Avitaillement Jet A-1',avail:true,req:true,price:0,note:'Depuis plan carburant'},
+      {n:'GPU',avail:fbo.gpu===true,req:false,price:fbo.gpu?(p?280:180):0,note:fbo.gpu?'Disponible':'Non disponible'},
+      {n:'Catering',avail:fbo.catering===true,req:false,price:fbo.catering?(isLarge?(p?2200:1400):(p?480:280)):0,note:isLarge?'Chef de bord':'Plateau repas'},
+      {n:'Eau potable',avail:true,req:false,price:p?80:50,note:'Remplissage reservoir'},
+      {n:'Nettoyage cabine',avail:true,req:isLarge&&!dep,price:isLarge&&!dep?(p?650:400):0,note:isLarge?'FBO equipe':'A charge equipage'},
+      {n:'Transport PAX',avail:!dep,req:false,price:p?380:220,note:'Reservation 48h avant'},
+    ].filter(s=>dep?['Avitaillement Jet A-1','GPU','Catering','Eau potable'].includes(s.n):true);
+  };
+
+  const depSvcs=mkSvcs(true),arrSvcs=mkSvcs(false);
+  const depObl=depSvcs.filter(s=>s.req).reduce((a,s)=>a+s.price,0);
+  const arrObl=arrSvcs.filter(s=>s.req).reduce((a,s)=>a+s.price,0);
+  const totalEst=fuelEur+depObl+arrObl;
+
+  function buildSolHTML(){
+    const el=document.getElementById('btab-sol');
+    el.innerHTML='';
+
+    // Recap costs
+    const recap=document.createElement('div');
+    recap.style.cssText='background:rgba(184,151,62,.1);border:1px solid rgba(184,151,62,.3);border-radius:10px;padding:14px;margin-bottom:16px';
+    recap.innerHTML='<div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:10px">COUT ESTIME DU VOL</div>';
+    const grid=document.createElement('div');
+    grid.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:8px';
+    const cells=[
+      {lbl:'Carburant',id:'bsol-fuel',val:fuelEur,color:'var(--gold)'},
+      {lbl:'Services dep',id:'bsol-dep',val:depObl,color:'var(--blue)'},
+      {lbl:'Services arr',id:'bsol-arr',val:arrObl,color:'var(--blue)'},
+      {lbl:'Total estimé',id:'bsol-total',val:totalEst,color:'var(--gold)',border:true},
+    ];
+    cells.forEach(c=>{
+      const cell=document.createElement('div');
+      cell.style.cssText=`background:var(${c.border?'--card-bg':'--bg3'});border-radius:6px;padding:10px;text-align:center${c.border?';border:1px solid var(--gold)':''}`;
+      cell.innerHTML=`<div style="font-size:10px;color:var(--text2);margin-bottom:4px">${c.lbl}</div><div id="${c.id}" class="mono fw7" style="color:${c.color}">~${c.val.toLocaleString('fr-FR')}€</div>`;
+      grid.appendChild(cell);
+    });
+    recap.appendChild(grid);
+    recap.innerHTML+=`<div style="font-size:10px;color:var(--text3);margin-top:8px">Estimations indicatives · hors taxes aéroportuaires</div>`;
+    el.appendChild(recap);
+
+    // Build service section
+    function buildSvcSection(title, color, fbo, svcs, side){
+      const sec=document.createElement('div');
+      sec.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:${color}"></div><div class="mono fw7" style="font-size:10px;letter-spacing:1px">${title} · ${fbo.fbo}</div></div>`;
+      const infoGrid=document.createElement('div');
+      infoGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px';
+      infoGrid.innerHTML=`<div class="bitem"><div class="blbl">FBO</div><div class="bval">${fbo.fbo}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${fbo.contact}</div></div><div class="bitem"><div class="blbl">Parking</div><div class="bval mono">${fbo.parking}</div></div>`;
+      sec.appendChild(infoGrid);
+
+      if(fbo.lim&&fbo.lim.length){
+        const warn=document.createElement('div');
+        warn.style.cssText='background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:6px;padding:10px 14px;margin-bottom:10px';
+        warn.innerHTML=`<div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:5px">LIMITATIONS</div>${fbo.lim.map(l=>`<div style="font-size:11px;margin-bottom:3px">· ${l}</div>`).join('')}`;
+        sec.appendChild(warn);
+      }
+
+      const svcGrid=document.createElement('div');
+      svcGrid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:16px';
+      svcs.forEach(s=>{
+        const card=document.createElement('div');
+        card.className='svc-card';
+        card.style.borderColor=s.avail?(s.req?'rgba(184,151,62,.3)':'var(--border)'):'#2a2a2a';
+        card.style.opacity=s.avail?'1':'.45';
+
+        const top=document.createElement('div');
+        top.style.cssText='display:flex;justify-content:space-between;margin-bottom:3px';
+        top.innerHTML=`<div style="font-size:10px;font-weight:600">${s.n}</div><div style="font-size:13px">${s.avail?(s.req?'✓':'○'):'✗'}</div>`;
+        card.appendChild(top);
+
+        const note=document.createElement('div');
+        note.style.cssText='font-size:9px;color:var(--text2);margin-bottom:5px';
+        note.textContent=s.note;
+        card.appendChild(note);
+
+        const priceEl=document.createElement('div');
+        priceEl.style.cssText=`font-size:10px;font-weight:700;color:${s.price===0?'var(--green)':'var(--gold)'};margin-bottom:5px`;
+        priceEl.textContent=s.req?'✓ Inclus':s.price===0?'Inclus':'~'+s.price.toLocaleString('fr-FR')+'€';
+        card.appendChild(priceEl);
+
+        if(s.avail&&!s.req){
+          const btn=document.createElement('button');
+          btn.textContent='Commander';
+          btn.style.cssText='width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;font-family:'DM Sans',sans-serif;transition:all .15s';
+          btn.addEventListener('click',()=>{
+            const ordered=btn.textContent.trim()==='Commandé';
+            btn.textContent=ordered?'Commander':'Commandé';
+            btn.style.background=ordered?'var(--bg3)':'var(--gold)';
+            btn.style.color=ordered?'var(--text2)':'#000';
+            btn.style.borderColor=ordered?'var(--border)':'var(--gold)';
+            card.style.borderColor=ordered?'var(--border)':'rgba(184,151,62,.5)';
+            card.style.background=ordered?'var(--card-bg)':'rgba(184,151,62,.06)';
+            _bOrdered[side]=(_bOrdered[side]||0)+(ordered?-s.price:s.price);
+            updateSolTotals(fuelEur,depObl,arrObl);
+          });
+          card.appendChild(btn);
+        }
+        svcGrid.appendChild(card);
+      });
+      sec.appendChild(svcGrid);
+      return sec;
+    }
+
+    el.appendChild(buildSvcSection('DEPART — '+f.origin,'var(--green)',fDep,depSvcs,'dep'));
+    const div=document.createElement('div');div.style.cssText='height:1px;background:var(--border);margin-bottom:14px';el.appendChild(div);
+    el.appendChild(buildSvcSection('ARRIVEE — '+f.destination,'var(--gold)',fArr,arrSvcs,'arr'));
+  }
+
+  function updateSolTotals(fuelBase,depBase,arrBase){
+    const depEl=document.getElementById('bsol-dep');
+    const arrEl=document.getElementById('bsol-arr');
+    const totEl=document.getElementById('bsol-total');
+    const depExtra=_bOrdered.dep||0;
+    const arrExtra=_bOrdered.arr||0;
+    if(depEl)depEl.textContent='~'+(depBase+depExtra).toLocaleString('fr-FR')+'€';
+    if(arrEl)arrEl.textContent='~'+(arrBase+arrExtra).toLocaleString('fr-FR')+'€';
+    if(totEl)totEl.textContent='~'+(fuelBase+depBase+arrBase+depExtra+arrExtra).toLocaleString('fr-FR')+'€';
+  }
+
+  buildSolHTML();
 
   bTab('general');
   document.getElementById('brief-overlay').style.display='flex';
