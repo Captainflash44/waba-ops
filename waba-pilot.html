@@ -102,6 +102,18 @@ textarea.form-input{resize:vertical;min-height:80px;}
 .text-muted{color:var(--text2);}
 .mb8{margin-bottom:8px;}.mb12{margin-bottom:12px;}.mb16{margin-bottom:16px;}.mb20{margin-bottom:20px;}.mt12{margin-top:12px;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.btab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);padding:10px 13px;cursor:pointer;font-size:10px;font-weight:700;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;flex-shrink:0;transition:all var(--transition);}
+.btab:hover{color:var(--text);}
+.btab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.btab-content{display:none;}
+.btab-content.active{display:block;}
+.bitem{background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;border:1px solid var(--border);}
+.blbl{font-size:9px;color:var(--text2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px;font-family:var(--font-mono);}
+.bval{font-size:12px;font-weight:600;}
+.metar{font-size:10px;font-family:var(--font-mono);background:var(--bg3);padding:8px 10px;border-radius:var(--radius-sm);line-height:1.6;word-break:break-all;color:var(--green);}
+.fuel-r{background:var(--bg3);border-radius:var(--radius-sm);padding:9px 12px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.eosid{background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--orange);}
+.svc-card{background:var(--card-bg);border-radius:var(--radius-sm);padding:10px 12px;border:1px solid var(--border);}
 </style>
 </head>
 <body>
@@ -353,6 +365,49 @@ textarea.form-input{resize:vertical;min-height:80px;}
   </div>
 </div>
 
+<!-- MODAL BRIEFING -->
+<div id="brief-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);z-index:3000;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:940px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow);">
+    <!-- Header -->
+    <div style="background:var(--bg3);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="mono fw7" style="font-size:20px;color:var(--gold);letter-spacing:2px" id="b-flightno">—</div>
+          <div style="font-size:15px;font-weight:600" id="b-route">—</div>
+          <span id="b-ferry-badge" style="display:none;background:rgba(74,155,184,.14);border:1px solid rgba(74,155,184,.3);color:var(--blue);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700">FERRY</span>
+          <span id="b-callsign" style="background:rgba(184,151,62,.12);border:1px solid rgba(184,151,62,.25);color:var(--gold);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700"></span>
+        </div>
+        <div style="font-size:10px;color:var(--text2);margin-top:3px;font-family:var(--font-mono)" id="b-sub">—</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="openSimBrief()" style="background:rgba(74,155,184,.14);border:1px solid rgba(74,155,184,.3);color:var(--blue);border-radius:6px;padding:7px 14px;cursor:pointer;font-size:11px;font-weight:600;font-family:var(--font-body)">✈ Créer plan SimBrief</button>
+        <button onclick="loadSimBrief()" id="simbrief-btn" style="background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:7px 14px;cursor:pointer;font-size:11px;font-weight:600;font-family:var(--font-body)">📥 Charger OFP</button>
+        <button onclick="markFlightDone()" style="background:rgba(90,158,111,.14);border:1px solid rgba(90,158,111,.3);color:var(--green);border-radius:6px;padding:7px 14px;cursor:pointer;font-size:11px;font-weight:600;font-family:var(--font-body)">✓ Vol effectué</button>
+        <button onclick="closeBriefing()" style="background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:7px 14px;cursor:pointer;font-size:11px;font-family:var(--font-body)">✕</button>
+      </div>
+    </div>
+    <!-- Tabs -->
+    <div style="display:flex;padding:0 22px;border-bottom:1px solid var(--border);background:var(--bg3);overflow-x:auto;scrollbar-width:none;flex-shrink:0;">
+      <button class="btab active" onclick="bTab('general')">Général</button>
+      <button class="btab" onclick="bTab('simbrief')">SimBrief OFP</button>
+      <button class="btab" onclick="bTab('terrain')">Terrain</button>
+      <button class="btab" onclick="bTab('pax')">Passagers</button>
+      <button class="btab" onclick="bTab('cargo')">Fret</button>
+      <button class="btab" onclick="bTab('fuel')">Carburant</button>
+      <button class="btab" onclick="bTab('sol')">Sol</button>
+    </div>
+    <div style="overflow-y:auto;padding:22px;flex:1">
+      <div class="btab-content active" id="btab-general"></div>
+      <div class="btab-content" id="btab-simbrief"><div style="text-align:center;padding:30px;color:var(--text2)">Cliquez sur "✈ Créer plan SimBrief" pour commencer</div></div>
+      <div class="btab-content" id="btab-terrain"></div>
+      <div class="btab-content" id="btab-pax"></div>
+      <div class="btab-content" id="btab-cargo"></div>
+      <div class="btab-content" id="btab-fuel"></div>
+      <div class="btab-content" id="btab-sol"></div>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script>
 // ═══════════════════════════════
@@ -505,12 +560,13 @@ function renderDashboard(){
           <div class="mono fw7" style="font-size:18px;color:${col}">${nextFlight.aircraft_id}</div>
           <div>
             <div style="font-size:16px;font-weight:700">${nextFlight.origin} → ${nextFlight.destination}</div>
-            <div style="font-size:11px;color:var(--text2);font-family:var(--font-mono)">${nextFlight.scheduled_date} · ${nextFlight.dep_time} UTC · ${nextFlight.planned_fl}</div>
+            <div style="font-size:11px;color:var(--text2);font-family:var(--font-mono)">${nextFlight.scheduled_date} · ${nextFlight.dep_time} UTC</div>
             ${expiryHtml}
           </div>
         </div>
         <div style="display:flex;gap:6px">
-          <button class="btn btn-gold" onclick="showPage('planning')" style="font-size:11px">📋 Voir rotation</button>
+          <button class="btn btn-gold" onclick="openBriefing('${nextFlight.id}')" style="font-size:11px">📋 Briefing</button>
+          <button class="btn btn-ghost" onclick="showPage('planning')" style="font-size:11px">Rotation</button>
         </div>
       </div>
       ${rot.map(f=>{const sc=f.is_ferry?'var(--blue)':'var(--green)';return`<div class="seg-row" style="border-left-color:${sc}">
@@ -700,7 +756,7 @@ function renderPlanning(){
           <div class="mono fw7" style="font-size:15px;color:${col}">${main.aircraft_id}</div>
           <div>
             <div style="font-size:13px;font-weight:700">${main.origin} → ${main.destination}</div>
-            <div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${main.scheduled_date} · ${main.planned_fl||'—'} · ${rot.length} seg.</div>
+            <div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${main.scheduled_date} · ${rot.length} segment(s)</div>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
@@ -718,7 +774,7 @@ function renderPlanning(){
           <div style="font-size:9px;font-weight:800;color:${sc};font-family:var(--font-mono);min-width:36px">${f.sequence===1?'MEP':f.sequence===3?'RTB':'PAX'}</div>
           <div style="flex:1;font-size:11px;font-weight:600">${f.origin} → ${f.destination}</div>
           <div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${f.duration} · ${f.distance_nm} NM${f.pax_count>0?` · ${f.pax_count} PAX`:''}</div>
-          ${f.is_ferry&&f.skippable?`<span style="font-size:8px;color:var(--text2)">skippable</span>`:''}
+          
         </div>`;}).join('')}
       </div>
       ${isDone||!qualified?'':isMyResa?`
@@ -762,7 +818,7 @@ function openResa(rid){
   const hasMep=rot.some(f=>f.sequence===1&&f.is_ferry);
   const hasRtb=rot.some(f=>f.sequence===3&&f.is_ferry);
   document.getElementById('resa-title').textContent=`${main.aircraft_id} — ${main.origin} → ${main.destination}`;
-  document.getElementById('resa-sub').textContent=`${main.scheduled_date} · ${rot.length} segment(s) · ${main.planned_fl||'—'}`;
+  document.getElementById('resa-sub').textContent=`${main.scheduled_date} · ${rot.length} segment(s)`;
   document.getElementById('resa-time').value=main.dep_time||'19:00';
   document.getElementById('resa-mep-block').style.display=hasMep?'block':'none';
   document.getElementById('resa-rtb-block').style.display=hasRtb?'block':'none';
@@ -887,6 +943,314 @@ async function submitPirep(){
   const{error}=await db.from('pireps').insert({pilot_id:anon?null:currentPilot.id,type,severity,description:desc,anonymous:anon,status:'OUVERT',date:new Date().toISOString().split('T')[0]});
   if(error){showToast('Erreur soumission','err');return;}
   showToast('✓ PIREP soumis !');document.getElementById('pirep-desc').value='';
+}
+
+
+// ═══════════════════════════════════════════
+// DONNÉES BRIEFING
+// ═══════════════════════════════════════════
+const AC_PERF={
+  'F-EVOK':{cap:6800,flow:900,taxi:80,climb:300,descent:120,res_min:30,alt:600},
+  'F-EXZA':{cap:5800,flow:700,taxi:70,climb:240,descent:100,res_min:30,alt:500},
+  'F-LIMB':{cap:26000,flow:4500,taxi:300,climb:1800,descent:600,res_min:30,alt:2200},
+};
+const SB_AC={'F-EVOK':{type:'C750',fin:'FEVOK'},'F-EXZA':{type:'CL60',fin:'FEXZA'},'F-LIMB':{type:'B738',fin:'FLIMB'}};
+const SB_PILOT='553724';
+
+const TERRAIN={
+  LFRS:{name:'Nantes-Atlantique',elev:90,rwy:[{id:'03/21',len:2900,w:45,surf:'Asphalte',ils:'ILS CAT I RWY 03',pcn:90},{id:'07/25',len:1400,w:30,surf:'Asphalte',ils:'Non instrumentee',pcn:60}],app:['ILS RWY 03','RNAV(GNSS) RWY 03','VOR RWY 21'],freqs:{TWR:'118.550',APP:'119.400',ATIS:'126.025',FBO:'130.500'},dangers:['Zone militaire - verifier NOTAMs','Faune active au printemps'],remarks:'Base principale WABA. Parking M reserve aviation affaires.',curfew:false,ppr:false,slot:false,eosid:[{rwy:'03',proc:'Cap 030 - 400 ft AAL. Virage gauche VOR NTS (112.90). Alt securite : 2000 ft.'},{rwy:'21',proc:'Cap 210 - 400 ft AAL. Virage droite cap 270. Alt securite : 2000 ft.'}]},
+  LFPB:{name:'Paris Le Bourget',elev:218,rwy:[{id:'07/25',len:3000,w:45,surf:'Asphalte',ils:'ILS CAT II RWY 07',pcn:100},{id:'03/21',len:2400,w:45,surf:'Asphalte',ils:'ILS CAT I RWY 03',pcn:95}],app:['ILS CAT II RWY 07','ILS RWY 03','RNAV(GNSS) RWY 07/25'],freqs:{TWR:'119.050',APP:'124.850',ATIS:'128.375',FBO:'131.350'},dangers:['CTR Paris tres chargee','TFR frequentes Ile-de-France'],remarks:'Premier aeroport affaires europeen. Slot obligatoire. Couvre-feu 23h-06h.',curfew:true,curfew_h:'23:00-06:00 LT',ppr:true,slot:true,eosid:[{rwy:'07',proc:'Cap 070 - 800 ft AAL. Virage gauche VOR BT (108.80). Eviter zone urbaine. Alt securite : 3000 ft.'},{rwy:'25',proc:'Cap 250 - 800 ft AAL. Virage droite VOR BT. Alt securite : 3000 ft.'}]},
+  EGLF:{name:'Farnborough Airport',elev:238,rwy:[{id:'06/24',len:2440,w:46,surf:'Asphalte',ils:'ILS CAT III RWY 06',pcn:100}],app:['ILS CAT III RWY 06','RNAV(GNSS) RWY 06/24','VOR/DME RWY 24'],freqs:{TWR:'122.500',APP:'134.350',ATIS:'128.400',FBO:'130.050'},dangers:['Zone P-106 Windsor adjacente','Noise monitoring strict'],remarks:'Aeroport affaires dedie. Restrictions bruit QC2 max. Curfew 23h-07h. PPR obligatoire.',curfew:true,curfew_h:'23:00-07:00 LT',ppr:true,slot:false,noise:'QC2 maximum',eosid:[{rwy:'06',proc:'Cap 060 - 800 ft AAL. Virage droite VOR FAR (113.75). Eviter zone P-106 Windsor. Alt securite : 3000 ft.'},{rwy:'24',proc:'Cap 240 - 800 ft AAL. Virage gauche VOR FAR. Alt securite : 2000 ft.'}]},
+  LSZH:{name:'Zurich Airport',elev:1416,rwy:[{id:'10/28',len:3300,w:60,surf:'Asphalte',ils:'ILS CAT IIIb RWY 28',pcn:120},{id:'14/32',len:3700,w:60,surf:'Asphalte',ils:'ILS CAT IIIb RWY 14',pcn:120}],app:['ILS CAT IIIb RWY 28/14','RNAV(GNSS) toutes pistes'],freqs:{TWR:'118.100',APP:'118.000',ATIS:'128.525',FBO:'121.750'},dangers:['Relief alpin - Alpes au sud','Turbulences vent du sud','Givrage possible en hiver'],remarks:'Elevation 1416 ft. Couvre-feu strict. Frais landing eleves.',curfew:true,curfew_h:'23:30-06:00 LT',ppr:false,slot:true},
+  OMDB:{name:'Dubai International',elev:62,rwy:[{id:'12L/30R',len:4000,w:60,surf:'Asphalte',ils:'ILS CAT IIIb',pcn:130},{id:'12R/30L',len:4450,w:60,surf:'Asphalte',ils:'ILS CAT IIIb',pcn:130}],app:['ILS CAT IIIb toutes pistes','RNAV(GNSS)'],freqs:{TWR:'118.750',APP:'124.900',ATIS:'126.250',FBO:'131.000'},dangers:['Chaleur extreme ete +50C','Vents de sable Shamal','Trafic tres dense'],remarks:'OAT ete +45/50C - calcul performance obligatoire. Douanes strictes.',curfew:false,ppr:false,slot:true,special:'Reglementation islamique en vigueur',eosid:[{rwy:'12L',proc:'Cap 120 - 800 ft AAL. Virage droite DUBAI VOR (116.70). Terrain plat desertique. Alt securite : 3000 ft.'},{rwy:'30R',proc:'Cap 300 - 800 ft AAL. Virage gauche DUBAI VOR. Alt securite : 2000 ft.'}]},
+  KTEB:{name:'Teterboro Airport',elev:9,rwy:[{id:'01/19',len:1819,w:30,surf:'Asphalte',ils:'ILS RWY 01',pcn:70},{id:'06/24',len:1372,w:30,surf:'Asphalte',ils:'Non instrumentee',pcn:60}],app:['ILS RWY 01','RNAV(GNSS) RWY 01/19','VOR RWY 19'],freqs:{TWR:'119.500',APP:'125.150',ATIS:'132.175',FBO:'130.600'},dangers:['Manhattan Class B - coordination ATC critique','Pistes courtes','MTOW max 100 000 lbs'],remarks:'MTOW 100 000 lbs max. APIS requis 60 min avant arrivee. US Customs on site.',curfew:false,ppr:false,slot:false,weight_lbs:100000,eosid:[{rwy:'01',proc:'ATTENTION piste courte 1819m. Cap 010 - 800 ft AAL. Virage gauche eviter Manhattan Class B. Direct Solberg VOR. Alt securite : 2000 ft. Contact NY APP 125.150 IMMEDIATEMENT.'},{rwy:'19',proc:'Cap 190 - 800 ft AAL. Virage droite cap 270. Eviter Newark Class B. Alt securite : 2000 ft.'}]},
+  LSGG:{name:'Geneve Cointrin',elev:1411,rwy:[{id:'04/22',len:3900,w:60,surf:'Asphalte',ils:'ILS CAT IIIb RWY 04',pcn:110}],app:['ILS CAT IIIb RWY 04','RNAV(GNSS) RWY 04/22'],freqs:{TWR:'118.700',APP:'128.150',ATIS:'126.175',FBO:'121.900'},dangers:['Mont Blanc et Alpes au SE','Vent du lac - turbulences','Brouillard automne/hiver'],remarks:'Elevation 1411 ft. Piste unique - trafic dense. Jet Aviation FBO.',curfew:false,ppr:false,slot:true},
+  LIRA:{name:'Rome Ciampino',elev:427,rwy:[{id:'15/33',len:2207,w:45,surf:'Asphalte',ils:'ILS RWY 15',pcn:80}],app:['ILS RWY 15','RNAV(GNSS) RWY 15/33'],freqs:{TWR:'118.050',APP:'119.200',ATIS:'121.800',FBO:'130.400'},dangers:['Piste unique courte 2207m','Relief collines albaines SE','Oiseaux frequents'],remarks:'Couvre-feu 23h-06h. PPR obligatoire. Verifier performances LDLR.',curfew:true,curfew_h:'23:00-06:00 LT',ppr:true,slot:false},
+  LEMD:{name:'Madrid Barajas',elev:2000,rwy:[{id:'14L/32R',len:4350,w:60,surf:'Asphalte',ils:'ILS CAT IIIb',pcn:120},{id:'18L/36R',len:3500,w:60,surf:'Asphalte',ils:'ILS CAT II',pcn:110}],app:['ILS CAT IIIb pistes principales','RNAV(GNSS)'],freqs:{TWR:'118.150',APP:'119.100',ATIS:'118.450',FBO:'121.900'},dangers:['Elevation 2000 ft - performances reduites','Vents forts secteur nord'],remarks:'Elevation importante - recalculer performances. Slot recommande.',curfew:false,ppr:false,slot:true},
+};
+
+const FBO={
+  LFRS:{fbo:'WABA Handling - Zone M',contact:'+33 2 40 84 80 00',pk_s:'M-07',pk_l:'M-11',fuel:'Jet A-1',gpu:true,catering:true,lim:[],premium:false},
+  LFPB:{fbo:'Signature Aviation Le Bourget',contact:'+33 1 49 34 50 00',pk_s:'Hall A Stand 5',pk_l:'Hall B Stand 12',fuel:'Jet A-1',gpu:true,catering:true,lim:['Couvre-feu 23h-06h','Slot obligatoire','PPR requis'],premium:true},
+  EGLF:{fbo:'Signature Aviation Farnborough',contact:'+44 1252 379000',pk_s:'Stand 1-5',pk_l:'Stand 10-12',fuel:'Jet A-1',gpu:true,catering:true,lim:['Curfew 23h-07h','Restriction bruit QC2','PPR obligatoire'],premium:true},
+  LSZH:{fbo:'Jet Aviation Zurich',contact:'+41 43 816 20 00',pk_s:'Bravo Apron',pk_l:'Charlie Apron',fuel:'Jet A-1',gpu:true,catering:true,lim:['Couvre-feu 23h30-06h','Slot recommande'],premium:true},
+  LSGG:{fbo:'Jet Aviation Geneva',contact:'+41 22 717 83 83',pk_s:'T2 Business',pk_l:'T2 Business',fuel:'Jet A-1',gpu:true,catering:true,lim:['Slot recommande'],premium:true},
+  OMDB:{fbo:'DC Aviation Al Futtaim',contact:'+971 4 299 5000',pk_s:'GA Terminal',pk_l:'T2 South Apron',fuel:'Jet A-1',gpu:true,catering:true,lim:['Permis survol certains pays','Douanes renforcees'],premium:true},
+  KTEB:{fbo:'Signature Aviation Teterboro',contact:'+1 201 288 5900',pk_s:'North Ramp',pk_l:'South Ramp',fuel:'Jet-A',gpu:true,catering:true,lim:['APIS requis 60 min avant','US Customs obligatoire'],premium:true},
+  LIRA:{fbo:'ADR Handling Ciampino',contact:'+39 06 794 88 00',pk_s:'Apron Est',pk_l:'Apron Est',fuel:'Jet A-1',gpu:false,catering:true,lim:['Couvre-feu 23h-06h','PPR obligatoire'],premium:false},
+  LEMD:{fbo:'Iberia Airport Services',contact:'+34 91 321 10 00',pk_s:'T4S Apron',pk_l:'T4S Apron',fuel:'Jet A-1',gpu:true,catering:true,lim:['Handling 48h avance recommande'],premium:false},
+};
+
+const CARGO_SEG={
+  executive:[{desc:'Bagages cabine (2 trolleys)',kg:14},{desc:'Documents confidentiels',kg:2}],
+  financial:[{desc:'Bagages cabine',kg:20},{desc:'Documents financiers',kg:3},{desc:'Ordinateurs portables',kg:8}],
+  luxury:[{desc:'Bagages de luxe (4 pcs)',kg:40},{desc:'Bouteilles de vin',kg:18,note:'Fragile'}],
+  UHNW:[{desc:'Bagages premium (6 pcs)',kg:55},{desc:'Oeuvre d art emballee',kg:12,note:'Fragile - temperature controlee'},{desc:'Champagne millesime',kg:20}],
+  transatlantic:[{desc:'Bagages (8 pcs)',kg:80},{desc:'Materiel informatique',kg:15},{desc:'Equipements medicaux',kg:8}],
+  corporate:[{desc:'Bagages professionnels',kg:25},{desc:'Echantillons commerciaux',kg:10}],
+  diplomatique:[{desc:'Valise diplomatique officielle',kg:8,note:'Scelle - inviolable'},{desc:'Documents officiels',kg:3}],
+  industriel:[{desc:'Prototypes industriels',kg:35,note:'Fragile'},{desc:'Documentation technique',kg:5}],
+  ferry:[],
+};
+const SEG_LABELS={executive:'Vol executif',financial:'Finance & Affaires',luxury:'Vol de luxe',UHNW:'Ultra High Net Worth',transatlantic:'Transatlantique',corporate:'Corporate',diplomatique:'Diplomatique',industriel:'Industriel',ferry:'Mise en place'};
+
+function calcFuel(acId,nm,kt){
+  const p=AC_PERF[acId];if(!p)return null;
+  const trip=Math.round(p.flow*(nm/kt)),res=Math.round(p.flow*(p.res_min/60)),cont=Math.round(trip*.05);
+  const tot=trip+p.climb+p.descent+res+p.alt+cont+p.taxi;
+  return{trip,climb:p.climb,descent:p.descent,res,alt:p.alt,cont,taxi:p.taxi,tot,feasible:tot<=p.cap,cap:p.cap};
+}
+function getFBO(icao,isLarge){
+  const d=FBO[icao]||{fbo:'Handling local - a confirmer',contact:'Via Universal Weather',pk_s:'A confirmer',pk_l:'A confirmer',fuel:'Jet A-1',gpu:null,catering:null,lim:['Verifier restrictions locales'],premium:false};
+  return{...d,parking:isLarge?d.pk_l:d.pk_s};
+}
+function callsign(fno,ferry,acId){return ferry?acId.replace('-',''):fno;}
+
+// ═══════════════════════════════════════════
+// BRIEFING
+// ═══════════════════════════════════════════
+let currentBriefFlight=null;
+
+function bTab(id){
+  document.querySelectorAll('.btab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.btab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('btab-'+id)?.classList.add('active');
+  document.querySelectorAll('.btab').forEach(t=>{if(t.getAttribute('onclick')===`bTab('${id}')`)t.classList.add('active');});
+}
+document.getElementById('brief-overlay')?.addEventListener('click',e=>{if(e.target===e.currentTarget)closeBriefing();});
+
+function closeBriefing(){document.getElementById('brief-overlay').style.display='none';currentBriefFlight=null;}
+
+function openBriefing(fid){
+  // Only allow briefing on pilot's own reserved flights
+  const f=allFlights.find(fl=>fl.id===fid);
+  if(!f){showToast('Vol introuvable','err');return;}
+  if(f.reserved_by&&f.reserved_by!==currentPilot?.user_id){showToast('Ce vol n\'est pas votre rotation','err');return;}
+  currentBriefFlight=f;
+  const ac=fleet.find(a=>a.id===f.aircraft_id);
+  const cs=callsign(f.flight_no,f.is_ferry,f.aircraft_id);
+  const fuel=ac?calcFuel(ac.id,f.distance_nm||300,ac.cruise_kt):null;
+  const fuelExtra=parseInt(localStorage.getItem('fe_'+f.id)||'0');
+
+  document.getElementById('b-flightno').textContent=f.flight_no;
+  document.getElementById('b-route').textContent=`${f.origin} → ${f.destination}`;
+  document.getElementById('b-sub').textContent=`${f.route_label||''} · ${f.dep_time||''}–${f.arr_time||''} UTC · ${f.aircraft_id}`;
+  document.getElementById('b-ferry-badge').style.display=f.is_ferry?'inline':'none';
+  document.getElementById('b-callsign').textContent=cs;
+
+  // ── GÉNÉRAL ──
+  document.getElementById('btab-general').innerHTML=`
+    ${f.is_ferry?`<div style="background:rgba(74,155,184,.08);border:1px solid rgba(74,155,184,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">✈ VOL DE MISE EN PLACE · Sans passagers commerciaux</div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${[['N de vol',f.flight_no],['Callsign radio',cs],['Appareil',`${f.aircraft_id} (${ac?.type||'—'})`],['Type de vol',SEG_LABELS[f.segment]||f.segment||'—'],['Depart',`${f.origin} · ${f.dep_time} UTC`],['Arrivee',`${f.destination} · ${f.arr_time} UTC`],['Alternate',f.alternate||'—'],['Distance',`${f.distance_nm} NM`],['Duree estimee',f.duration],['Passagers',f.pax_count>0?`${f.pax_count} PAX`:'Aucun (ferry)']].map(([l,v])=>`<div class="bitem"><div class="blbl">${l}</div><div class="bval">${v}</div></div>`).join('')}
+    </div>`;
+
+  // ── TERRAIN ──
+  const tD=TERRAIN[f.origin],tA=TERRAIN[f.destination];
+  let th='';
+  // DÉPART
+  th+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div><div class="mono fw7" style="font-size:11px;letter-spacing:1px">DEPART — ${f.origin}</div></div>`;
+  if(tD){
+    th+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px"><div class="bitem"><div class="blbl">Elevation</div><div class="bval mono">${tD.elev} ft / ${Math.round(tD.elev*.3048)} m</div></div><div class="bitem"><div class="blbl">Couvre-feu</div><div class="bval" style="color:${tD.curfew?'var(--orange)':'var(--green)'}">${tD.curfew?'CURFEW '+tD.curfew_h:'Aucun'}</div></div><div class="bitem"><div class="blbl">PPR / Slot</div><div class="bval">${tD.ppr?'<span style="color:var(--orange)">PPR</span>':'OK'} · ${tD.slot?'<span style="color:var(--orange)">Slot</span>':'OK'}</div></div></div>`;
+    th+=`<div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">PISTES</div>`;
+    th+=tD.rwy.map(r=>`<div style="display:flex;gap:12px;align-items:center;background:var(--bg3);border-radius:var(--radius-sm);padding:8px 12px;border:1px solid var(--border);margin-bottom:6px"><div class="mono fw7" style="color:var(--blue);min-width:55px">${r.id}</div><div style="flex:1"><div style="font-size:12px;font-weight:600">${r.len.toLocaleString()} m x ${r.w} m · ${r.surf}</div><div style="font-size:10px;color:var(--text2)">${r.ils} · PCN ${r.pcn}</div></div></div>`).join('');
+    th+=`<div style="font-size:10px;font-weight:700;color:var(--text2);margin:10px 0 6px;font-family:var(--font-mono);letter-spacing:1px">AIDES A L'APPROCHE</div>`;
+    th+=`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${tD.app.map(a=>`<span style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:3px 8px;font-size:10px;font-family:var(--font-mono)">${a}</span>`).join('')}</div>`;
+    th+=`<div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">FREQUENCES</div>`;
+    th+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">${Object.entries(tD.freqs).map(([k,v])=>`<div class="bitem"><div class="blbl">${k}</div><div class="bval mono text-gold">${v}</div></div>`).join('')}</div>`;
+    if(tD.eosid?.length){
+      th+=`<div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">PROCEDURES ENGINE OUT (OEI)</div>`;
+      th+=`<div style="font-size:10px;color:var(--text3);margin-bottom:8px">Indicatif · Consulter cartes SIA/Jeppesen</div>`;
+      th+=tD.eosid.map(e=>`<div class="eosid"><div class="mono fw7" style="color:var(--orange);margin-bottom:4px;font-size:11px">RWY ${e.rwy}</div><div style="font-size:11px;line-height:1.7">${e.proc}</div></div>`).join('');
+    }
+    th+=`<div style="font-size:10px;font-weight:700;color:var(--text2);margin:12px 0 6px;font-family:var(--font-mono);letter-spacing:1px">COMMENTAIRES PILOTES — ${f.origin}</div>`;
+    th+=`<div id="bc-dep-${f.origin}" style="margin-bottom:8px"><div style="padding:10px;background:var(--bg3);border-radius:var(--radius-sm);font-size:11px;color:var(--text2)">Chargement...</div></div>`;
+    th+=`<div class="bitem mb12"><div class="blbl mb8">Ajouter un commentaire</div><textarea id="bctxt-dep-${f.origin}" class="form-input" style="height:60px;margin-bottom:8px" placeholder="Votre experience..."></textarea><div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px;color:var(--text2)">Note :</span>${[1,2,3,4,5].map(n=>`<button id="bcstar-dep-${n}-${f.origin}" onclick="setBRating('dep-${f.origin}',${n})" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3)">★</button>`).join('')}<button class="btn btn-gold" style="margin-left:auto;font-size:10px;padding:4px 12px" onclick="submitBComment('${f.origin}','dep-${f.origin}','${f.aircraft_id}')">Publier</button></div></div>`;
+  }else th+=`<div style="padding:12px;background:var(--bg3);border-radius:var(--radius-sm);color:var(--text2);font-size:12px;margin-bottom:12px">Donnees non disponibles pour ${f.origin}</div>`;
+  th+=`<div style="height:1px;background:var(--border);margin:14px 0"></div>`;
+  // DESTINATION
+  th+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:var(--gold)"></div><div class="mono fw7" style="font-size:11px;letter-spacing:1px">DESTINATION — ${f.destination}</div></div>`;
+  if(tA){
+    th+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px"><div class="bitem"><div class="blbl">Elevation</div><div class="bval mono">${tA.elev} ft / ${Math.round(tA.elev*.3048)} m</div></div><div class="bitem"><div class="blbl">Couvre-feu</div><div class="bval" style="color:${tA.curfew?'var(--orange)':'var(--green)'}">${tA.curfew?'CURFEW '+tA.curfew_h:'Aucun'}</div></div><div class="bitem"><div class="blbl">PPR / Slot</div><div class="bval">${tA.ppr?'<span style="color:var(--orange)">PPR</span>':'OK'} · ${tA.slot?'<span style="color:var(--orange)">Slot</span>':'OK'}</div></div></div>`;
+    if(tA.special||tA.noise||tA.weight_lbs)th+=`<div style="background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px"><div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:5px">ALERTES SPECIALES</div>${tA.special?`<div style="font-size:11px;margin-bottom:3px">· ${tA.special}</div>`:''}${tA.noise?`<div style="font-size:11px;margin-bottom:3px">· Bruit : ${tA.noise}</div>`:''}${tA.weight_lbs?`<div style="font-size:11px">· Masse max : ${tA.weight_lbs.toLocaleString()} lbs</div>`:''}</div>`;
+    th+=tA.rwy.map(r=>`<div style="display:flex;gap:12px;align-items:center;background:var(--bg3);border-radius:var(--radius-sm);padding:8px 12px;border:1px solid var(--border);margin-bottom:6px"><div class="mono fw7" style="color:var(--blue);min-width:55px">${r.id}</div><div style="flex:1"><div style="font-size:12px;font-weight:600">${r.len.toLocaleString()} m x ${r.w} m · ${r.surf}</div><div style="font-size:10px;color:var(--text2)">${r.ils} · PCN ${r.pcn}</div></div></div>`).join('');
+    th+=`<div style="display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 12px">${tA.app.map(a=>`<span style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:3px 8px;font-size:10px;font-family:var(--font-mono)">${a}</span>`).join('')}</div>`;
+    th+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">${Object.entries(tA.freqs).map(([k,v])=>`<div class="bitem"><div class="blbl">${k}</div><div class="bval mono text-gold">${v}</div></div>`).join('')}</div>`;
+    if(tA.dangers?.length)th+=`<div style="background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px"><div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:5px">DANGERS ET POINTS D'ATTENTION</div>${tA.dangers.map(d=>`<div style="font-size:11px;margin-bottom:3px">· ${d}</div>`).join('')}</div>`;
+    th+=`<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;border-left:3px solid var(--blue);margin-bottom:14px"><div style="font-size:9px;color:var(--blue);font-weight:800;margin-bottom:4px;font-family:var(--font-mono)">REMARQUES OPS</div><div style="font-size:11px;color:var(--text2);line-height:1.7">${tA.remarks||'—'}</div></div>`;
+    th+=`<div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">COMMENTAIRES PILOTES — ${f.destination}</div>`;
+    th+=`<div id="bc-arr-${f.destination}" style="margin-bottom:8px"><div style="padding:10px;background:var(--bg3);border-radius:var(--radius-sm);font-size:11px;color:var(--text2)">Chargement...</div></div>`;
+    th+=`<div class="bitem"><div class="blbl mb8">Ajouter un commentaire</div><textarea id="bctxt-arr-${f.destination}" class="form-input" style="height:60px;margin-bottom:8px" placeholder="Votre experience..."></textarea><div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px;color:var(--text2)">Note :</span>${[1,2,3,4,5].map(n=>`<button id="bcstar-arr-${n}-${f.destination}" onclick="setBRating('arr-${f.destination}',${n})" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3)">★</button>`).join('')}<button class="btn btn-gold" style="margin-left:auto;font-size:10px;padding:4px 12px" onclick="submitBComment('${f.destination}','arr-${f.destination}','${f.aircraft_id}')">Publier</button></div></div>`;
+  }else th+=`<div style="padding:12px;background:var(--bg3);border-radius:var(--radius-sm);color:var(--text2);font-size:12px">Donnees non disponibles pour ${f.destination}</div>`;
+  document.getElementById('btab-terrain').innerHTML=th;
+  loadBComments(f.origin,'dep');loadBComments(f.destination,'arr');
+
+  // ── PAX ──
+  const PAX_NAMES=['Alexandre Moreau','Isabelle Petit','Francois Bernard','Marie Dubois','Julien Martin','Celine Robert','Antoine Simon','Nathalie Laurent','Pierre Leroy','Sandrine Thomas'];
+  const PAX_REQS=['Repas vegetarien','Assistance PMR','Allergie noix','Champagne millesime','WiFi prioritaire','Presse quotidienne'];
+  const paxList=Array.from({length:f.pax_count||0},(_,i)=>({name:PAX_NAMES[i%PAX_NAMES.length],seat:i+1,vip:Math.random()>.7,req:Math.random()>.5?PAX_REQS[Math.floor(Math.random()*PAX_REQS.length)]:null}));
+  document.getElementById('btab-pax').innerHTML=f.pax_count>0
+    ?`<div style="font-size:12px;font-weight:700;margin-bottom:12px">Manifeste · ${f.pax_count} PAX</div>${paxList.map(p=>`<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:6px;border:1px solid ${p.vip?'rgba(184,151,62,.3)':'var(--border)'}"><div style="width:26px;height:26px;border-radius:50%;background:${p.vip?'rgba(184,151,62,.15)':'var(--bg4)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:1px solid ${p.vip?'var(--gold)':'var(--border)'}">S${p.seat}</div><div style="flex:1"><div style="font-size:12px;font-weight:600">${p.name}</div>${p.req?`<div style="font-size:10px;color:var(--orange)">Demande : ${p.req}</div>`:''}</div>${p.vip?`<span class="badge" style="background:rgba(184,151,62,.12);color:var(--gold);border:1px solid rgba(184,151,62,.3)">VIP</span>`:''}</div>`).join('')}`
+    :`<div style="text-align:center;padding:24px;color:var(--text2)">Aucun passager · Vol ferry</div>`;
+
+  // ── CARGO ──
+  const cItems=CARGO_SEG[f.segment]||CARGO_SEG.executive;
+  const cTotal=cItems.reduce((a,c)=>a+c.kg,0);
+  document.getElementById('btab-cargo').innerHTML=f.is_ferry?`<div style="text-align:center;padding:24px;color:var(--text2)">Vol ferry · Aucun fret commercial</div>`:
+    cItems.length?`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-size:12px;font-weight:700">Manifeste fret</div><span class="badge" style="background:rgba(184,151,62,.12);color:var(--gold);border:1px solid rgba(184,151,62,.25)">${SEG_LABELS[f.segment]||f.segment}</span></div>${cItems.map(c=>`<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:6px;border:1px solid var(--border)"><div style="flex:1"><div style="font-size:12px;font-weight:600">${c.desc}</div>${c.note?`<div style="font-size:10px;color:var(--text2)">${c.note}</div>`:''}</div><div class="mono fw7" style="font-size:12px">${c.kg} kg</div></div>`).join('')}<div style="padding:9px 12px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);font-size:10px;color:var(--text2);margin-top:8px;display:flex;justify-content:space-between"><span>Total fret : <strong>${cTotal} kg</strong></span><span>Conforme IATA</span></div>`:
+    `<div style="text-align:center;padding:24px;color:var(--text2)">Aucun fret pour ce vol</div>`;
+
+  // ── CARBURANT ──
+  document.getElementById('btab-fuel').innerHTML=fuel?`
+    <div style="font-size:13px;font-weight:700;margin-bottom:13px">Plan carburant · ${f.aircraft_id}</div>
+    <div style="background:rgba(74,155,184,.07);border:1px solid rgba(74,155,184,.25);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:800;color:var(--blue);margin-bottom:8px">REGLEMENTATION EASA PART-NCC · EU 965/2012</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--text2)">
+        <div>Carburant de route A→B selon performances</div><div>Contingence 5% minimum (Basic Scheme)</div>
+        <div>Carburant alternate obligatoire</div><div style="color:var(--orange)">Reserve finale 30 min · MINIMUM ABSOLU</div>
+      </div>
+    </div>
+    ${[['Roulage depart',fuel.taxi,'Estime 15 min',false],['Carburant de route',fuel.trip,`${f.distance_nm} NM`,false],['Montee',fuel.climb,'Profil standard',false],['Descente',fuel.descent,'Profil standard',false],['Contingence 5%',fuel.cont,'Basic Scheme EASA',false],['Carburant alternate',fuel.alt,f.alternate||'—',false],['Reserve finale 30 min',fuel.res,'MINIMUM ABSOLU',true]].map(([l,v,s,w])=>`<div class="fuel-r" style="border-color:${w?'var(--orange)':'var(--border)'}"><div><div style="font-size:12px;font-weight:600;color:${w?'var(--orange)':'var(--text)'}">${l}</div><div style="font-size:10px;color:var(--text2)">${s}</div></div><div class="mono fw7" style="color:${w?'var(--orange)':'var(--blue)'}">${v.toLocaleString('fr-FR')} kg</div></div>`).join('')}
+    <div style="background:rgba(184,151,62,.1);border-radius:var(--radius-sm);padding:14px;border:1px solid var(--gold);margin:14px 0">
+      <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:10px">CARBURANT ADDITIONNEL · Decision commandant de bord</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+        <div style="flex:1"><div style="font-size:10px;color:var(--text2);margin-bottom:5px;font-family:var(--font-mono)">ADDITIONNEL (KG)</div>
+        <input type="number" id="bfuel-extra" value="${fuelExtra}" min="0" max="${Math.max(0,fuel.cap-fuel.tot)}" step="50" style="width:100%;background:var(--input-bg);border:1px solid var(--gold);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:14px;outline:none;font-family:var(--font-mono)" oninput="updateBFuel('${f.id}')"/></div>
+        <div style="text-align:center;min-width:110px"><div style="font-size:10px;color:var(--text2);margin-bottom:5px">Marge dispo</div><div class="mono fw7" style="font-size:16px;color:var(--green)">${(fuel.cap-fuel.tot).toLocaleString('fr-FR')} kg</div></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${[0,100,200,500,1000].filter(v=>v<=fuel.cap-fuel.tot).map(v=>`<button onclick="setBFuelExtra('${f.id}',${v})" style="background:${v===fuelExtra?'var(--gold)':'var(--bg3)'};color:${v===fuelExtra?'#000':'var(--text2)'};border:1px solid ${v===fuelExtra?'var(--gold)':'var(--border)'};border-radius:4px;padding:5px 10px;cursor:pointer;font-size:10px;font-family:var(--font-mono)">${v===0?'Min legal':'+'+v+' kg'}</button>`).join('')}</div>
+    </div>
+    <div style="background:rgba(184,151,62,.12);border-radius:var(--radius-sm);padding:12px 16px;border:1px solid var(--gold);display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:13px;font-weight:800;color:var(--gold)">TOTAL EMPORT</div><div style="font-size:11px;color:var(--text2);margin-top:2px" id="bfuel-feasibility">${fuel.feasible?'Faisable · Marge : '+(fuel.cap-fuel.tot).toLocaleString('fr-FR')+' kg':'DEPASSE LA CAPACITE !'}</div></div>
+      <div id="bfuel-total" class="mono fw7" style="font-size:22px;color:var(--gold)">${(fuel.tot+fuelExtra).toLocaleString('fr-FR')} kg</div>
+    </div>`:`<div style="text-align:center;padding:24px;color:var(--text2)">Donnees carburant non disponibles</div>`;
+
+  // ── SOL ──
+  const isLarge=f.aircraft_id==='F-LIMB';
+  const fDep=getFBO(f.origin,isLarge),fArr=getFBO(f.destination,isLarge);
+  const fuelEx=parseInt(localStorage.getItem('fe_'+f.id)||'0');
+  const totFuel=fuel?fuel.tot+fuelEx:0;
+  const fuelCostKg=['EGLF','KTEB','OMDB','LSZH'].includes(f.destination)?1.35:0.98;
+  const fuelEur=Math.round(totFuel*fuelCostKg);
+  const isPremArr=['LFPB','EGLF','OMDB','KTEB','LSZH','LSGG'].includes(f.destination);
+  const isPremDep=['LFPB','EGLF','OMDB','KTEB','LSZH','LSGG'].includes(f.origin);
+
+  const mkSvcs=(dep)=>{const p=dep?isPremDep:isPremArr;return[
+    {n:'Avitaillement Jet A-1',avail:true,req:true,price:null,note:'Depuis plan carburant'},
+    {n:'GPU',avail:(dep?fDep:fArr).gpu===true,req:false,price:(dep?fDep:fArr).gpu?(p?280:180):null,note:(dep?fDep:fArr).gpu?'Disponible':'Non disponible'},
+    {n:'Catering',avail:(dep?fDep:fArr).catering===true,req:false,price:(dep?fDep:fArr).catering?(isLarge?(p?2200:1400):(p?480:280)):null,note:isLarge?'Chef de bord':'Plateau repas'},
+    {n:'Eau potable',avail:true,req:false,price:p?80:50,note:'Remplissage reservoir'},
+    {n:'Nettoyage cabine',avail:true,req:isLarge&&!dep,price:isLarge&&!dep?(p?650:400):0,note:isLarge?'FBO equipe':'A charge equipage'},
+    {n:'Transport PAX',avail:!dep,req:false,price:p?380:220,note:'Reservation 48h'},
+  ].filter(s=>dep?['Avitaillement Jet A-1','GPU','Catering','Eau potable'].includes(s.n):true);};
+
+  const depSvcs=mkSvcs(true),arrSvcs=mkSvcs(false);
+  const depObl=depSvcs.filter(s=>s.req&&s.price).reduce((a,s)=>a+s.price,0);
+  const arrObl=arrSvcs.filter(s=>s.req&&s.price).reduce((a,s)=>a+s.price,0);
+  const totalEst=fuelEur+depObl+arrObl;
+
+  function sCard(s,side){return`<div class="svc-card" style="border-color:${s.avail?(s.req?'rgba(184,151,62,.3)':'var(--border)'):'#2a2a2a'};opacity:${s.avail?1:.45}"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><div style="font-size:10px;font-weight:600">${s.n}</div><div>${s.avail?(s.req?'✓':'○'):'✗'}</div></div><div style="font-size:9px;color:var(--text2);margin-bottom:5px">${s.note}</div>${s.price!==null?`<div style="font-size:10px;font-weight:700;color:${s.price===0?'var(--green)':'var(--gold)'}">~${s.price===0?'Inclus':s.price.toLocaleString('fr-FR')+'€'}</div>`:''}</div>`;}
+
+  document.getElementById('btab-sol').innerHTML=`
+    <div style="background:rgba(184,151,62,.1);border:1px solid rgba(184,151,62,.3);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:10px">COUT ESTIME DU VOL</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Carburant</div><div class="mono fw7" style="color:var(--gold)">~${fuelEur.toLocaleString('fr-FR')}€</div></div>
+        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services dep</div><div class="mono fw7" style="color:var(--blue)">~${depObl.toLocaleString('fr-FR')}€</div></div>
+        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services arr</div><div class="mono fw7" style="color:var(--blue)">~${arrObl.toLocaleString('fr-FR')}€</div></div>
+        <div style="background:var(--card-bg);border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--gold)"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Total</div><div class="mono fw7" style="color:var(--gold)">~${totalEst.toLocaleString('fr-FR')}€</div></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div><div class="mono fw7" style="font-size:10px;letter-spacing:1px">DEPART — ${f.origin} · ${fDep.fbo}</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div class="bitem"><div class="blbl">FBO</div><div class="bval">${fDep.fbo}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${fDep.contact}</div></div><div class="bitem"><div class="blbl">Parking</div><div class="bval mono">${fDep.parking}</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:16px">${depSvcs.map(s=>sCard(s,'dep')).join('')}</div>
+    <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:var(--gold)"></div><div class="mono fw7" style="font-size:10px;letter-spacing:1px">ARRIVEE — ${f.destination} · ${fArr.fbo}</div></div>
+    ${fArr.lim?.length?`<div style="background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px"><div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:5px">LIMITATIONS</div>${fArr.lim.map(l=>`<div style="font-size:11px;margin-bottom:3px">· ${l}</div>`).join('')}</div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div class="bitem"><div class="blbl">FBO</div><div class="bval">${fArr.fbo}</div><div style="font-size:10px;color:var(--text2);margin-top:2px">${fArr.contact}</div></div><div class="bitem"><div class="blbl">Parking</div><div class="bval mono">${fArr.parking}</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px">${arrSvcs.map(s=>sCard(s,'arr')).join('')}</div>`;
+
+  bTab('general');
+  document.getElementById('brief-overlay').style.display='flex';
+}
+
+// Fuel extra
+function setBFuelExtra(fid,kg){document.getElementById('bfuel-extra').value=kg;updateBFuel(fid);}
+function updateBFuel(fid){
+  const extra=parseInt(document.getElementById('bfuel-extra').value)||0;
+  const f=currentBriefFlight;if(!f)return;
+  const ac=fleet.find(a=>a.id===f.aircraft_id);
+  const fuel=ac?calcFuel(ac.id,f.distance_nm||300,ac.cruise_kt):null;
+  if(!fuel)return;
+  localStorage.setItem('fe_'+fid,extra);
+  const tot=fuel.tot+extra;const ok=tot<=fuel.cap;
+  const td=document.getElementById('bfuel-total');const fe=document.getElementById('bfuel-feasibility');
+  if(td)td.textContent=tot.toLocaleString('fr-FR')+' kg';
+  if(fe){fe.textContent=ok?'Faisable · Marge : '+(fuel.cap-tot).toLocaleString('fr-FR')+' kg':'DEPASSE LA CAPACITE !';fe.style.color=ok?'var(--text2)':'var(--orange)';if(td)td.style.color=ok?'var(--gold)':'var(--orange)';}
+}
+
+// Comments
+const bRatings={};
+function setBRating(key,n){bRatings[key]=n;for(let i=1;i<=5;i++){const s=document.getElementById(`bcstar-${key}-${i}`);if(s)s.style.color=i<=n?'var(--gold)':'var(--text3)';}}
+async function loadBComments(icao,side){
+  const el=document.getElementById(`bc-${side}-${icao}`);if(!el)return;
+  const{data}=await db.from('airport_comments').select('*,pilots(name)').eq('icao',icao).order('created_at',{ascending:false}).limit(6);
+  if(!data||!data.length){el.innerHTML=`<div style="padding:10px;background:var(--bg3);border-radius:var(--radius-sm);font-size:11px;color:var(--text2)">Aucun commentaire · Soyez le premier !</div>`;return;}
+  el.innerHTML=data.map(c=>`<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px;border-left:3px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><div style="font-size:11px;font-weight:700">${c.pilots?.name||'Pilote WABA'}</div><div style="display:flex;gap:1px">${[1,2,3,4,5].map(n=>{const sc=n<=(c.rating||0)?'var(--gold)':'var(--text3)';return`<span style="color:${sc};font-size:12px">★</span>`;}).join('')}<span style="font-size:10px;color:var(--text3);margin-left:5px">${new Date(c.created_at).toLocaleDateString('fr-FR')}</span></div></div><div style="font-size:11px;color:var(--text2)">${c.comment}</div></div>`).join('');}
+
+async function submitBComment(icao,side,acId){
+  const text=document.getElementById(`bctxt-${side}-${icao}`)?.value?.trim();
+  if(!text){showToast('Veuillez ecrire un commentaire','err');return;}
+  const{error}=await db.from('airport_comments').insert({icao,pilot_id:currentPilot?.id||null,comment:text,rating:bRatings[side]||null,aircraft_id:acId,visit_date:new Date().toISOString().split('T')[0]});
+  if(error){showToast('Erreur publication','err');return;}
+  showToast('Commentaire publie !');document.getElementById(`bctxt-${side}-${icao}`).value='';delete bRatings[side];loadBComments(icao,side);}
+
+// SimBrief
+function openSimBrief(){
+  if(!currentBriefFlight)return;
+  const f=currentBriefFlight,acInfo=SB_AC[f.aircraft_id]||{type:'B738',fin:f.aircraft_id.replace('-','')};
+  const params=new URLSearchParams({airline:'WAB',fltnum:f.flight_no.replace('WAB',''),type:acInfo.type,orig:f.origin,dest:f.destination,altn:f.alternate||'LFRS',fl:(f.planned_fl||'FL370').replace('FL',''),reg:f.aircraft_id.replace('-',''),fin:acInfo.fin,pax:f.pax_count||0,autoload:1,userid:SB_PILOT});
+  window.open('https://dispatch.simbrief.com/options/custom?'+params,'_blank');
+  document.getElementById('btab-simbrief').innerHTML=`<div style="background:rgba(74,155,184,.08);border:1px solid rgba(74,155,184,.25);border-radius:var(--radius-sm);padding:20px;text-align:center"><div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px">SimBrief ouvert dans un nouvel onglet</div><div style="font-size:12px;color:var(--text2);margin-bottom:16px"><strong style="color:var(--text)">${f.origin} → ${f.destination}</strong> · ${f.aircraft_id}</div><button onclick="loadSimBrief()" style="background:rgba(90,158,111,.15);border:1px solid rgba(90,158,111,.3);color:var(--green);border-radius:var(--radius-sm);padding:10px 22px;cursor:pointer;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif">📥 Charger l'OFP</button><div style="margin-top:12px;font-size:10px;color:var(--text3)">1. Generez l'OFP sur SimBrief · 2. Revenez ici · 3. Chargez l'OFP</div></div>`;
+  bTab('simbrief');
+}
+
+async function loadSimBrief(){
+  const btn=document.getElementById('simbrief-btn');btn.disabled=true;btn.textContent='Chargement...';
+  const f=currentBriefFlight;
+  try{
+    const resp=await fetch(`https://www.simbrief.com/api/xml.fetcher.php?userid=${SB_PILOT}&json=1`);
+    if(!resp.ok)throw new Error('SimBrief non disponible');
+    const data=await resp.json();
+    const fuel=data.fuel||{},times=data.times||{},gen=data.general||{},orig=data.origin||{},dest=data.destination||{},alt=data.alternate||{};
+    const matches=orig.icao_code===f.origin&&dest.icao_code===f.destination;
+    document.getElementById('btab-simbrief').innerHTML=`
+      ${!matches?`<div style="background:rgba(196,122,58,.08);border:1px solid rgba(196,122,58,.3);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--orange)">⚠ Le plan SimBrief (${orig.icao_code||'?'} → ${dest.icao_code||'?'}) ne correspond pas a ce vol (${f.origin} → ${f.destination})</div>`:''}
+      <div class="bitem mb12">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px"><div class="mono fw7" style="font-size:16px;color:var(--gold)">${gen.icao_airline||'WAB'}${gen.flight_number||f.flight_no}</div><div style="font-size:10px;color:var(--text3)">${new Date(parseInt(gen.release||Date.now()/1000)*1000).toLocaleString('fr-FR')}</div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+          ${[['FL initial',gen.initial_altitude||f.planned_fl],['Distance',`${gen.air_distance||f.distance_nm} NM`],['Duree',times.est_time_enroute||f.duration],['Carbu. total',`${parseInt(fuel.plan_ramp||0).toLocaleString()} kg`],['Carbu. route',`${parseInt(fuel.enroute_burn||0).toLocaleString()} kg`],['Reserve',`${parseInt(fuel.reserve||0).toLocaleString()} kg`],['Contingence',`${parseInt(fuel.contingency||0).toLocaleString()} kg`],['Alternate',`${parseInt(fuel.alternate_burn||0).toLocaleString()} kg`]].map(([l,v])=>`<div class="bitem"><div class="blbl">${l}</div><div class="bval mono">${v}</div></div>`).join('')}
+        </div>
+        <div style="margin-bottom:12px"><div style="font-size:10px;color:var(--text2);margin-bottom:5px;font-family:var(--font-mono)">ROUTE ATC</div><div style="font-size:10px;font-family:var(--font-mono);background:var(--bg3);padding:10px;border-radius:var(--radius-sm);line-height:1.8;word-break:break-all">${gen.route||'—'}</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          ${[['METAR Depart',orig.metar||'—'],['METAR Arrivee',dest.metar||'—'],['METAR Alternate',alt.metar||'—']].map(([l,v])=>`<div><div style="font-size:10px;color:var(--text2);margin-bottom:4px">${l}</div><div class="metar">${v}</div></div>`).join('')}
+        </div>
+      </div>`;
+    bTab('simbrief');showToast('OFP SimBrief charge !');
+  }catch(e){document.getElementById('btab-simbrief').innerHTML=`<div style="text-align:center;padding:24px"><div style="font-size:13px;color:var(--orange);font-weight:700;margin-bottom:8px">Impossible de charger l'OFP</div><div style="font-size:12px;color:var(--text2)">Generez d'abord le plan sur <a href="https://dispatch.simbrief.com" target="_blank" style="color:var(--blue)">dispatch.simbrief.com</a></div></div>`;showToast('Generez d\'abord le plan sur SimBrief','err');}
+  btn.disabled=false;btn.textContent='📥 Charger OFP';
+}
+
+// Vol effectué
+async function markFlightDone(){
+  if(!currentBriefFlight)return;
+  const f=currentBriefFlight;
+  await db.from('flights').update({status:'COMPLETED',updated_at:new Date().toISOString()}).eq('id',f.id);
+  if(!f.is_ferry&&f.destination){
+    await db.from('fleet').update({current_airport:f.destination,updated_at:new Date().toISOString()}).eq('id',f.aircraft_id);
+    await db.from('logbook').insert({pilot_id:currentPilot.id,flight_id:f.id,aircraft_id:f.aircraft_id,flight_no:f.flight_no,date:f.scheduled_date,origin:f.origin,destination:f.destination,dep_time:f.dep_time,arr_time:f.arr_time,duration_min:parseDur(f.duration),distance_nm:f.distance_nm,as_captain:true});
+  }
+  closeBriefing();showToast('✓ Vol marque effectue !');await loadAllData();
 }
 
 // ═══════════════════════════════
