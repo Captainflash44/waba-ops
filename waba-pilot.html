@@ -1153,16 +1153,67 @@ function openBriefing(fid){
   const arrObl=arrSvcs.filter(s=>s.req&&s.price).reduce((a,s)=>a+s.price,0);
   const totalEst=fuelEur+depObl+arrObl;
 
-  function sCard(s,side){return`<div class="svc-card" style="border-color:${s.avail?(s.req?'rgba(184,151,62,.3)':'var(--border)'):'#2a2a2a'};opacity:${s.avail?1:.45}"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><div style="font-size:10px;font-weight:600">${s.n}</div><div>${s.avail?(s.req?'✓':'○'):'✗'}</div></div><div style="font-size:9px;color:var(--text2);margin-bottom:5px">${s.note}</div>${s.price!==null?`<div style="font-size:10px;font-weight:700;color:${s.price===0?'var(--green)':'var(--gold)'}">~${s.price===0?'Inclus':s.price.toLocaleString('fr-FR')+'€'}</div>`:''}</div>`;}
+  let _bOrdered={dep:0,arr:0};
 
+  function sCard(s,side){
+    const sid='bsvc-'+side+'-'+s.n.replace(/[^a-zA-Z]/g,'');
+    return`<div class="svc-card" id="${sid}" style="border-color:${s.avail?(s.req?'rgba(184,151,62,.3)':'var(--border)'):'#2a2a2a'};opacity:${s.avail?1:.45}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <div style="font-size:10px;font-weight:600">${s.n}</div>
+        <div style="font-size:13px">${s.avail?(s.req?'✓':'○'):'✗'}</div>
+      </div>
+      <div style="font-size:9px;color:var(--text2);margin-bottom:5px">${s.note}</div>
+      ${s.price!==null?`<div style="font-size:10px;font-weight:700;color:${s.price===0?'var(--green)':'var(--gold)'};margin-bottom:5px">~${s.price===0?'Inclus':s.price.toLocaleString('fr-FR')+'€'}</div>`:''}
+      ${s.avail&&!s.req?`<button id="bbtn-${sid}" onclick="toggleBSvc('${sid}','${side}',${s.price||0})"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:4px;padding:4px;cursor:pointer;font-size:9px;font-family:'DM Sans',sans-serif;transition:all .15s">
+        Commander
+      </button>`:''}
+      ${s.req?`<div style="font-size:9px;color:var(--gold);font-weight:700">✓ Inclus automatiquement</div>`:''}
+    </div>`;
+  }
+
+  function toggleBSvc(sid,side,price){
+    const btn=document.getElementById('bbtn-'+sid);
+    const card=document.getElementById(sid);
+    if(!btn)return;
+    const isOrdered=btn.textContent.trim()==='Commande';
+    // Toggle state
+    btn.textContent=isOrdered?'Commander':'Commande';
+    btn.style.background=isOrdered?'var(--bg3)':'var(--gold)';
+    btn.style.color=isOrdered?'var(--text2)':'#000';
+    btn.style.borderColor=isOrdered?'var(--border)':'var(--gold)';
+    // Update card visual
+    if(card){
+      card.style.borderColor=isOrdered?'var(--border)':'rgba(184,151,62,.5)';
+      card.style.background=isOrdered?'var(--card-bg)':'rgba(184,151,62,.06)';
+    }
+    // Update running total for this side
+    _bOrdered[side]=(_bOrdered[side]||0)+(isOrdered?-(price):price);
+    // Update displayed totals
+    const depEl=document.getElementById('bsol-dep-cost');
+    const arrEl=document.getElementById('bsol-arr-cost');
+    const totEl=document.getElementById('bsol-total');
+    const fuelEl=document.getElementById('bsol-fuel-cost');
+    if(depEl)depEl.textContent='~'+(parseInt(depEl.dataset.base||'0')+(_bOrdered.dep||0)).toLocaleString('fr-FR')+'€';
+    if(arrEl)arrEl.textContent='~'+(parseInt(arrEl.dataset.base||'0')+(_bOrdered.arr||0)).toLocaleString('fr-FR')+'€';
+    if(totEl&&fuelEl){
+      const fuel=parseInt(fuelEl.dataset.cost||'0');
+      const depBase=parseInt(document.getElementById('bsol-dep-cost')?.dataset?.base||'0');
+      const arrBase=parseInt(document.getElementById('bsol-arr-cost')?.dataset?.base||'0');
+      totEl.textContent='~'+(fuel+depBase+arrBase+(_bOrdered.dep||0)+(_bOrdered.arr||0)).toLocaleString('fr-FR')+'€';
+    }
+    showToast(isOrdered?'Service retire':'Service commande (+'+price+'€)');
+  }
+
+  _bOrdered={dep:0,arr:0};
   document.getElementById('btab-sol').innerHTML=`
     <div style="background:rgba(184,151,62,.1);border:1px solid rgba(184,151,62,.3);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px">
       <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:10px">COUT ESTIME DU VOL</div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Carburant</div><div class="mono fw7" style="color:var(--gold)">~${fuelEur.toLocaleString('fr-FR')}€</div></div>
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services dep</div><div class="mono fw7" style="color:var(--blue)">~${depObl.toLocaleString('fr-FR')}€</div></div>
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services arr</div><div class="mono fw7" style="color:var(--blue)">~${arrObl.toLocaleString('fr-FR')}€</div></div>
-        <div style="background:var(--card-bg);border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--gold)"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Total</div><div class="mono fw7" style="color:var(--gold)">~${totalEst.toLocaleString('fr-FR')}€</div></div>
+        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Carburant</div><div class="mono fw7" style="color:var(--gold)" id="bsol-fuel-cost" data-cost="${fuelEur}">~${fuelEur.toLocaleString('fr-FR')}€</div></div>
+        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services dep</div><div class="mono fw7" style="color:var(--blue)" id="bsol-dep-cost" data-base="${depObl}">~${depObl.toLocaleString('fr-FR')}€</div></div>
+        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Services arr</div><div class="mono fw7" style="color:var(--blue)" id="bsol-arr-cost" data-base="${arrObl}">~${arrObl.toLocaleString('fr-FR')}€</div></div>
+        <div style="background:var(--card-bg);border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--gold)"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Total estimé</div><div class="mono fw7" style="color:var(--gold)" id="bsol-total">~${totalEst.toLocaleString('fr-FR')}€</div></div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div><div class="mono fw7" style="font-size:10px;letter-spacing:1px">DEPART — ${f.origin} · ${fDep.fbo}</div></div>
