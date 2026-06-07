@@ -118,6 +118,21 @@ textarea.form-input{resize:vertical;min-height:80px;}
 .eosid{background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--orange);}
 .svc-card{background:var(--card-bg);border-radius:var(--radius-sm);padding:10px 12px;border:1px solid var(--border);}
 </style>
+<script>
+function toggleTheme(){
+  const h=document.documentElement;
+  const isDark=h.getAttribute('data-theme')==='dark';
+  h.setAttribute('data-theme',isDark?'light':'dark');
+  const lbl=document.getElementById('theme-lbl');
+  if(lbl)lbl.textContent=isDark?'MODE JOUR':'MODE NUIT';
+  localStorage.setItem('waba-theme',isDark?'light':'dark');
+}
+// Apply saved theme immediately
+(function(){
+  const t=localStorage.getItem('waba-theme')||'dark';
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
 </head>
 <body>
 <!-- SIDEBAR -->
@@ -447,8 +462,8 @@ function fmtMin(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%
 // ═══════════════════════════════
 // THEME
 // ═══════════════════════════════
-function toggleTheme(){const h=document.documentElement,d=h.getAttribute('data-theme')==='dark';h.setAttribute('data-theme',d?'light':'dark');document.getElementById('theme-lbl').textContent=d?'MODE JOUR':'MODE NUIT';localStorage.setItem('waba-theme',d?'light':'dark');}
-(function(){const t=localStorage.getItem('waba-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+// toggleTheme moved to head script
+// theme init moved to head script
 
 // ═══════════════════════════════
 // NAVIGATION
