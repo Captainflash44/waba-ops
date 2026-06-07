@@ -121,6 +121,7 @@ select.form-input{cursor:pointer;appearance:none;}
   <nav>
     <div class="nav-item active" data-page="dashboard"><span>⬡</span> Tableau de bord</div>
     <div class="nav-item" data-page="rotations"><span>✈</span> Mes rotations</div>
+    <div class="nav-item" data-page="available"><span>◇</span> Rotations disponibles</div>
     <div class="nav-item" data-page="logbook"><span>📒</span> Carnet de route</div>
     <div class="nav-item" data-page="pirep"><span>⚠</span> Soumettre PIREP</div>
     <div class="nav-item" data-page="rex"><span>📋</span> REX & Sécurité</div>
@@ -236,6 +237,18 @@ select.form-input{cursor:pointer;appearance:none;}
     </div>
   </div>
 
+  <!-- ROTATIONS DISPONIBLES -->
+  <div class="page" id="page-available">
+    <div class="page-title">Rotations disponibles</div>
+    <div class="page-sub">Semaine 24 · Cliquez pour réserver une rotation</div>
+    <div style="background:rgba(184,151,62,.1);border:1px solid rgba(184,151,62,.3);border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:12px;color:var(--gold)">
+      ✈ En réservant une rotation, vous vous engagez à effectuer les vols dans MSFS. Les équipages virtuels assurent les rotations non réservées automatiquement.
+    </div>
+    <div id="available-list">
+      <div class="card" style="text-align:center;padding:30px;color:var(--text2)">Chargement des rotations disponibles...</div>
+    </div>
+  </div>
+
   <!-- REX -->
   <div class="page" id="page-rex">
     <div class="page-title">REX & Retour d'expérience</div>
@@ -317,6 +330,27 @@ select.form-input{cursor:pointer;appearance:none;}
 </div>
 
 <div id="toast"></div>
+
+<!-- MODAL RÉSERVATION -->
+<div id="resa-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#0a0f1e;border:1px solid #1e2a3a;border-radius:14px;width:100%;max-width:480px;padding:28px;">
+    <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:4px" id="resa-title">Réserver cette rotation</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:20px;font-family:'JetBrains Mono',monospace" id="resa-sub">—</div>
+    
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:6px;font-family:'JetBrains Mono',monospace">Heure de départ UTC (1er segment)</label>
+      <input type="time" id="resa-time" style="width:100%;background:#0e0e12;border:1px solid #252530;border-radius:6px;padding:10px 14px;color:#e8e6e0;font-family:'JetBrains Mono',monospace;font-size:16px;outline:none;color-scheme:dark"/>
+      <div style="font-size:10px;color:var(--text2);margin-top:6px">⚠ Heure en UTC — vérifiez le décalage depuis votre fuseau horaire</div>
+    </div>
+
+    <div id="resa-segments" style="margin-bottom:18px"></div>
+
+    <div style="display:flex;gap:10px">
+      <button onclick="confirmReservation()" style="flex:1;background:#B8973E;border:none;color:#fff;border-radius:7px;padding:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif">✓ Confirmer la réservation</button>
+      <button onclick="closeResa()" style="background:transparent;border:1px solid #252530;color:#7A7880;border-radius:7px;padding:12px 18px;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif">Annuler</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const SUPABASE_URL='https://ncawfnwgihmebztfrekg.supabase.co';
@@ -803,7 +837,8 @@ function switchTab(id){
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
 
 // ── NAV ──
-function showPage(id){
+function showPage(id){ if(id==='available') loadAvailableRotations();
+
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id)?.classList.add('active');
@@ -837,7 +872,219 @@ function setupRealtime(){
   }).subscribe();
 }
 
-init().then(setupRealtime);
+
+// ═══════════════════════════════════════════
+// ROTATIONS DISPONIBLES & RÉSERVATION
+// ═══════════════════════════════════════════
+let allFlights = [];
+let currentResa = null; // rotation en cours de réservation
+
+async function loadAvailableRotations() {
+  // Charger TOUS les vols de la semaine
+  const { data } = await db.from('flights')
+    .select('*')
+    .eq('week_start', WEEK_START)
+    .order('scheduled_date').order('dep_time');
+  allFlights = data || [];
+  renderAvailable();
+}
+
+function renderAvailable() {
+  const el = document.getElementById('available-list');
+  if (!el) return;
+
+  if (!allFlights.length) {
+    el.innerHTML = `<div class="card" style="text-align:center;padding:30px;color:var(--text2)">Aucune rotation planifiée cette semaine.</div>`;
+    return;
+  }
+
+  // Grouper par rotation
+  const rotations = {};
+  allFlights.forEach(f => {
+    const rid = f.rotation_id || f.id;
+    if (!rotations[rid]) rotations[rid] = [];
+    rotations[rid].push(f);
+  });
+  Object.values(rotations).forEach(r => r.sort((a, b) => (a.sequence||0) - (b.sequence||0)));
+  const sorted = Object.values(rotations).sort((a, b) => {
+    const af = a[0], bf = b[0];
+    return (af.scheduled_date + af.dep_time).localeCompare(bf.scheduled_date + bf.dep_time);
+  });
+
+  el.innerHTML = sorted.map(rotation => {
+    const main = rotation.find(f => !f.is_ferry) || rotation[0];
+    const isReserved = !!main.reserved_by;
+    const isMine = main.reserved_by === currentPilot?.user_id;
+    const isCompleted = rotation.every(f => f.status === 'COMPLETED' || f.status === 'SKIPPED');
+    const acColor = {'F-EVOK':'#B8973E','F-EXZA':'#4A9BB8','F-LIMB':'#5A9E6F'}[main.aircraft_id] || '#B8973E';
+
+    return `<div class="rotation-card" style="border-color:${isMine?acColor:(isReserved?'#5A5856':'#252530')}40;margin-bottom:12px;background:${isMine?acColor+'08':isReserved?'#16161A':'#111114'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #252530">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;color:${acColor}">${main.aircraft_id}</div>
+          <div>
+            <div style="font-size:12px;font-weight:600">${main.origin} → ${main.destination}</div>
+            <div style="font-size:10px;color:var(--text2);font-family:'JetBrains Mono',monospace">${main.scheduled_date} · ${rotation.length} segment(s)</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${isCompleted
+            ? `<span style="font-size:10px;color:var(--green)">✓ Effectuée</span>`
+            : isMine
+            ? `<span style="background:${acColor}22;color:${acColor};border:1px solid ${acColor}44;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700">✓ Ma rotation</span>`
+            : isReserved
+            ? `<span style="font-size:10px;color:var(--text2)">🤖 Équipage virtuel</span>`
+            : `<button onclick="openResa('${rotation[0].rotation_id||rotation[0].id}')" style="background:#B8973E;border:none;color:#000;border-radius:6px;padding:7px 16px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">Réserver →</button>`
+          }
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${rotation.map(f => {
+          const isFerry = f.is_ferry;
+          const segColor = isFerry ? 'var(--blue)' : 'var(--green)';
+          const segLabel = f.sequence===1?'↑ MEP':f.sequence===3?'↓ RTB':'✈ PAX';
+          return `<div style="display:flex;align-items:center;gap:10px;background:#16161A;border-radius:6px;padding:8px 12px;border-left:3px solid ${segColor}">
+            <div style="min-width:44px;text-align:center">
+              <div style="font-size:9px;font-weight:800;color:${segColor};font-family:'JetBrains Mono',monospace">${segLabel}</div>
+              <div style="font-size:10px;color:var(--text2);font-family:'JetBrains Mono',monospace">${f.dep_time||''} UTC</div>
+            </div>
+            <div style="width:1px;height:28px;background:#252530"></div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:600">${f.origin} → ${f.destination}</div>
+              <div style="font-size:10px;color:var(--text2)">${f.distance_nm} NM · ${f.duration}${f.pax_count>0?` · ${f.pax_count} PAX`:''}</div>
+            </div>
+            <div style="font-size:10px;color:var(--text2)">${f.planned_fl||'—'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${isMine ? `
+      <div style="margin-top:10px;padding:8px 12px;background:#B8973E18;border-radius:6px;border:1px solid #B8973E33;font-size:11px;color:#B8973E;display:flex;justify-content:space-between;align-items:center">
+        <span>Votre départ : ${main.actual_dep_utc ? new Date(main.actual_dep_utc).toUTCString().slice(17,22)+' UTC' : 'Heure planifiée'}</span>
+        <button onclick="cancelResa('${main.rotation_id||main.id}')" style="background:transparent;border:1px solid #B8973E44;color:#B8973E;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:10px">Annuler réservation</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── OUVRIR MODAL RÉSERVATION ──
+function openResa(rotationId) {
+  const rotation = Object.values(
+    allFlights.reduce((acc, f) => {
+      const rid = f.rotation_id || f.id;
+      if (!acc[rid]) acc[rid] = [];
+      acc[rid].push(f);
+      return acc;
+    }, {})
+  ).find(r => (r[0].rotation_id || r[0].id) === rotationId);
+
+  if (!rotation) return;
+  currentResa = { rotationId, rotation };
+
+  const main = rotation.find(f => !f.is_ferry) || rotation[0];
+  document.getElementById('resa-title').textContent = `${main.aircraft_id} — ${main.origin} → ${main.destination}`;
+  document.getElementById('resa-sub').textContent = `${main.scheduled_date} · ${rotation.length} segment(s)`;
+
+  // Heure par défaut = heure prévue du 1er segment
+  const firstSeg = rotation[0];
+  document.getElementById('resa-time').value = firstSeg.dep_time || '08:00';
+
+  // Afficher les segments
+  document.getElementById('resa-segments').innerHTML = `
+    <div style="font-size:10px;color:var(--text2);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;font-family:'JetBrains Mono',monospace">Segments de la rotation</div>
+    ${rotation.map(f => `
+    <div style="display:flex;gap:10px;align-items:center;background:#0e0e12;border-radius:6px;padding:8px 12px;margin-bottom:6px;border-left:3px solid ${f.is_ferry?'var(--blue)':'var(--green)'}">
+      <div style="font-size:9px;font-weight:800;color:${f.is_ferry?'var(--blue)':'var(--green)'};font-family:'JetBrains Mono',monospace;min-width:36px">${f.sequence===1?'MEP':f.sequence===3?'RTB':'PAX'}</div>
+      <div style="flex:1;font-size:12px;font-weight:600">${f.origin} → ${f.destination}</div>
+      <div style="font-size:10px;color:var(--text2);font-family:'JetBrains Mono',monospace">${f.duration} · ${f.distance_nm} NM</div>
+      ${f.skippable ? `<span style="font-size:9px;color:var(--text2)">Skippable</span>` : ''}
+    </div>`).join('')}`;
+
+  document.getElementById('resa-overlay').style.display = 'flex';
+}
+
+function closeResa() {
+  document.getElementById('resa-overlay').style.display = 'none';
+  currentResa = null;
+}
+
+// ── CONFIRMER LA RÉSERVATION ──
+async function confirmReservation() {
+  if (!currentResa || !currentPilot) return;
+
+  const depTimeUTC = document.getElementById('resa-time').value;
+  if (!depTimeUTC) { showToast('Veuillez indiquer une heure de départ UTC', 'err'); return; }
+
+  const { rotationId, rotation } = currentResa;
+  const firstSeg = rotation[0];
+  const dateStr = firstSeg.scheduled_date;
+
+  // Calculer l'heure réelle de départ UTC
+  const actualDep = new Date(`${dateStr}T${depTimeUTC}:00Z`);
+
+  // Mettre à jour tous les segments de la rotation
+  const updates = rotation.map((f, idx) => {
+    // Recalculer les horaires selon l'heure choisie
+    const offsetMin = idx === 0 ? 0 : rotation.slice(0, idx).reduce((a, seg) => {
+      const dur = parseDuration(seg.duration);
+      return a + dur + 30; // +30min handling entre segments
+    }, 0);
+    const segDepUTC = new Date(actualDep.getTime() + offsetMin * 60000);
+    const segArrUTC = new Date(segDepUTC.getTime() + parseDuration(f.duration) * 60000);
+
+    return db.from('flights').update({
+      reserved_by: currentPilot.user_id,
+      is_virtual: false,
+      actual_dep_utc: segDepUTC.toISOString(),
+      actual_arr_utc: segArrUTC.toISOString(),
+      dep_time: segDepUTC.toUTCString().slice(17, 22),
+      arr_time: segArrUTC.toUTCString().slice(17, 22),
+      captain_id: currentPilot.id,
+      updated_at: new Date().toISOString(),
+    }).eq('id', f.id);
+  });
+
+  await Promise.all(updates);
+
+  // Notification
+  await db.from('notifications').insert({
+    pilot_id: currentPilot.id,
+    type: 'ROTATION_ASSIGNED',
+    title: 'Rotation réservée !',
+    message: `Vous avez réservé la rotation ${rotation.find(f=>!f.is_ferry)?.origin} → ${rotation.find(f=>!f.is_ferry)?.destination} le ${dateStr} à ${depTimeUTC} UTC`,
+    read: false,
+  });
+
+  closeResa();
+  showToast('✓ Rotation réservée ! Bon vol !');
+  await loadMyData();
+  await loadAvailableRotations();
+}
+
+// ── ANNULER UNE RÉSERVATION ──
+async function cancelResa(rotationId) {
+  if (!confirm('Annuler votre réservation pour cette rotation ?')) return;
+  const myFlightsInRot = allFlights.filter(f => (f.rotation_id || f.id) === rotationId && f.reserved_by === currentPilot?.user_id);
+  await Promise.all(myFlightsInRot.map(f =>
+    db.from('flights').update({
+      reserved_by: null,
+      is_virtual: true,
+      actual_dep_utc: null,
+      actual_arr_utc: null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', f.id)
+  ));
+  showToast('Réservation annulée');
+  await loadMyData();
+  await loadAvailableRotations();
+}
+
+function parseDuration(dur) {
+  if (!dur) return 0;
+  const m = dur.match(/(\d+)h(\d+)/);
+  return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 0;
+}
+
+init().then(()=>{ setupRealtime(); loadAvailableRotations(); });
 </script>
 </body>
 </html>
