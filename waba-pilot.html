@@ -473,11 +473,19 @@ async function init(){
   if(!pilot){alert('Profil pilote non trouvé.');await db.auth.signOut();window.location.href='login.html';return;}
   currentPilot=pilot;
 
-  // Si admin en mode preview - afficher lien retour
-  const isPreview=new URLSearchParams(window.location.search).get('preview')==='1';
+  // Mode preview admin
+  const urlParams=new URLSearchParams(window.location.search);
+  const isPreview=urlParams.get('preview')==='1'||urlParams.get('preview')==='true';
+  console.log('[WABA Pilot] role='+pilot.role+' isPreview='+isPreview+' url='+window.location.href);
   if(pilot.role==='ADMIN'||pilot.role==='DISPATCH'){
-    if(!isPreview){window.location.href='waba-ops-v3.html';return;}
-    document.getElementById('admin-link-container').innerHTML='<a href="waba-ops-v3.html" class="admin-link">← Retour intranet admin</a>';
+    if(!isPreview){
+      console.log('[WABA Pilot] Admin sans preview -> redirect ops');
+      window.location.href='waba-ops-v3.html';
+      return;
+    }
+    console.log('[WABA Pilot] Admin en mode preview -> OK');
+    const adminLinkEl=document.getElementById('admin-link-container');
+    if(adminLinkEl)adminLinkEl.innerHTML='<a href="waba-ops-v3.html" class="admin-link" style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(184,151,62,.07);border:1px solid rgba(184,151,62,.18);border-radius:6px;color:rgba(184,151,62,.8);font-size:10px;text-decoration:none">← Retour intranet admin</a>';
   }
 
   // Afficher infos pilote
