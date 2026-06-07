@@ -1269,7 +1269,7 @@ function openBriefing(fid){
         if(s.avail&&!s.req){
           const btn=document.createElement('button');
           btn.textContent='Commander';
-          btn.style.cssText='width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;font-family:'DM Sans',sans-serif;transition:all .15s';
+          btn.style.cssText="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;font-family:'DM Sans',sans-serif;transition:all .15s";
           btn.addEventListener('click',()=>{
             const ordered=btn.textContent.trim()==='Commandé';
             btn.textContent=ordered?'Commander':'Commandé';
