@@ -1025,6 +1025,40 @@ document.getElementById('brief-overlay')?.addEventListener('click',e=>{if(e.targ
 
 function closeBriefing(){document.getElementById('brief-overlay').style.display='none';currentBriefFlight=null;}
 
+
+function toggleBSvc(sid,side,price){
+  const btn=document.getElementById('bbtn-'+sid);
+  const card=document.getElementById(sid);
+  if(!btn)return;
+  const isOrdered=btn.textContent.trim()==='Commande';
+  // Toggle state
+  btn.textContent=isOrdered?'Commander':'Commande';
+  btn.style.background=isOrdered?'var(--bg3)':'var(--gold)';
+  btn.style.color=isOrdered?'var(--text2)':'#000';
+  btn.style.borderColor=isOrdered?'var(--border)':'var(--gold)';
+  // Update card visual
+  if(card){
+  card.style.borderColor=isOrdered?'var(--border)':'rgba(184,151,62,.5)';
+  card.style.background=isOrdered?'var(--card-bg)':'rgba(184,151,62,.06)';
+  }
+  // Update running total for this side
+  _bOrdered[side]=(_bOrdered[side]||0)+(isOrdered?-(price):price);
+  // Update displayed totals
+  const depEl=document.getElementById('bsol-dep-cost');
+  const arrEl=document.getElementById('bsol-arr-cost');
+  const totEl=document.getElementById('bsol-total');
+  const fuelEl=document.getElementById('bsol-fuel-cost');
+  if(depEl)depEl.textContent='~'+(parseInt(depEl.dataset.base||'0')+(_bOrdered.dep||0)).toLocaleString('fr-FR')+'€';
+  if(arrEl)arrEl.textContent='~'+(parseInt(arrEl.dataset.base||'0')+(_bOrdered.arr||0)).toLocaleString('fr-FR')+'€';
+  if(totEl&&fuelEl){
+  const fuel=parseInt(fuelEl.dataset.cost||'0');
+  const depBase=parseInt(document.getElementById('bsol-dep-cost')?.dataset?.base||'0');
+  const arrBase=parseInt(document.getElementById('bsol-arr-cost')?.dataset?.base||'0');
+  totEl.textContent='~'+(fuel+depBase+arrBase+(_bOrdered.dep||0)+(_bOrdered.arr||0)).toLocaleString('fr-FR')+'€';
+  }
+  showToast(isOrdered?'Service retire':'Service commande (+'+price+'€)');
+}
+
 function openBriefing(fid){
   // Only allow briefing on pilot's own reserved flights
   const f=allFlights.find(fl=>fl.id===fid);
@@ -1153,7 +1187,7 @@ function openBriefing(fid){
   const arrObl=arrSvcs.filter(s=>s.req&&s.price).reduce((a,s)=>a+s.price,0);
   const totalEst=fuelEur+depObl+arrObl;
 
-  let _bOrdered={dep:0,arr:0};
+let _bOrdered={dep:0,arr:0};
 
   function sCard(s,side){
     const sid='bsvc-'+side+'-'+s.n.replace(/[^a-zA-Z]/g,'');
@@ -1172,41 +1206,8 @@ function openBriefing(fid){
     </div>`;
   }
 
-  function toggleBSvc(sid,side,price){
-    const btn=document.getElementById('bbtn-'+sid);
-    const card=document.getElementById(sid);
-    if(!btn)return;
-    const isOrdered=btn.textContent.trim()==='Commande';
-    // Toggle state
-    btn.textContent=isOrdered?'Commander':'Commande';
-    btn.style.background=isOrdered?'var(--bg3)':'var(--gold)';
-    btn.style.color=isOrdered?'var(--text2)':'#000';
-    btn.style.borderColor=isOrdered?'var(--border)':'var(--gold)';
-    // Update card visual
-    if(card){
-      card.style.borderColor=isOrdered?'var(--border)':'rgba(184,151,62,.5)';
-      card.style.background=isOrdered?'var(--card-bg)':'rgba(184,151,62,.06)';
-    }
-    // Update running total for this side
-    _bOrdered[side]=(_bOrdered[side]||0)+(isOrdered?-(price):price);
-    // Update displayed totals
-    const depEl=document.getElementById('bsol-dep-cost');
-    const arrEl=document.getElementById('bsol-arr-cost');
-    const totEl=document.getElementById('bsol-total');
-    const fuelEl=document.getElementById('bsol-fuel-cost');
-    if(depEl)depEl.textContent='~'+(parseInt(depEl.dataset.base||'0')+(_bOrdered.dep||0)).toLocaleString('fr-FR')+'€';
-    if(arrEl)arrEl.textContent='~'+(parseInt(arrEl.dataset.base||'0')+(_bOrdered.arr||0)).toLocaleString('fr-FR')+'€';
-    if(totEl&&fuelEl){
-      const fuel=parseInt(fuelEl.dataset.cost||'0');
-      const depBase=parseInt(document.getElementById('bsol-dep-cost')?.dataset?.base||'0');
-      const arrBase=parseInt(document.getElementById('bsol-arr-cost')?.dataset?.base||'0');
-      totEl.textContent='~'+(fuel+depBase+arrBase+(_bOrdered.dep||0)+(_bOrdered.arr||0)).toLocaleString('fr-FR')+'€';
-    }
-    showToast(isOrdered?'Service retire':'Service commande (+'+price+'€)');
-  }
 
-  _bOrdered={dep:0,arr:0};
-  document.getElementById('btab-sol').innerHTML=`
+  _bOrdered={dep:0,arr:0};document.getElementById('btab-sol').innerHTML=`
     <div style="background:rgba(184,151,62,.1);border:1px solid rgba(184,151,62,.3);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px">
       <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:10px">COUT ESTIME DU VOL</div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
