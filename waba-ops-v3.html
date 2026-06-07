@@ -891,8 +891,6 @@ function openBriefing(fid){
   const cargoItems = cargoBySegment[segKey] || cargoBySegment.executive;
   const totalCargo = cargoItems.reduce((a,c)=>a+c.kg,0);
 
-  // Segment labels
-  const segLabels = {executive:'Vol exécutif',financial:'Finance & Affaires',luxury:'Vol de luxe',UHNW:'Ultra High Net Worth',transatlantic:'Transatlantique',corporate:'Corporate',diplomatique:'Diplomatique',industriel:'Industriel',ferry:'Mise en place'};
   const segLabel = segLabels[segKey] || segKey;
 
   document.getElementById('tab-cargo').innerHTML = f.is_ferry
