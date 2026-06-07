@@ -1,7 +1,10 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- WABA Pilot v2.1 -->
 <html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WABA — Espace Pilote</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700&family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -1269,7 +1272,7 @@ function openBriefing(fid){
         if(s.avail&&!s.req){
           const btn=document.createElement('button');
           btn.textContent='Commander';
-          btn.style.cssText="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;font-family:'DM Sans',sans-serif;transition:all .15s";
+          btn.style.cssText="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;font-family:sans-serif;transition:all .15s";
           btn.addEventListener('click',()=>{
             const ordered=btn.textContent.trim()==='Commandé';
             btn.textContent=ordered?'Commander':'Commandé';
@@ -1348,7 +1351,7 @@ function openSimBrief(){
   const f=currentBriefFlight,acInfo=SB_AC[f.aircraft_id]||{type:'B738',fin:f.aircraft_id.replace('-','')};
   const params=new URLSearchParams({airline:'WAB',fltnum:f.flight_no.replace('WAB',''),type:acInfo.type,orig:f.origin,dest:f.destination,altn:f.alternate||'LFRS',fl:(f.planned_fl||'FL370').replace('FL',''),reg:f.aircraft_id.replace('-',''),fin:acInfo.fin,pax:f.pax_count||0,autoload:1,userid:SB_PILOT});
   window.open('https://dispatch.simbrief.com/options/custom?'+params,'_blank');
-  document.getElementById('btab-simbrief').innerHTML=`<div style="background:rgba(74,155,184,.08);border:1px solid rgba(74,155,184,.25);border-radius:var(--radius-sm);padding:20px;text-align:center"><div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px">SimBrief ouvert dans un nouvel onglet</div><div style="font-size:12px;color:var(--text2);margin-bottom:16px"><strong style="color:var(--text)">${f.origin} → ${f.destination}</strong> · ${f.aircraft_id}</div><button onclick="loadSimBrief()" style="background:rgba(90,158,111,.15);border:1px solid rgba(90,158,111,.3);color:var(--green);border-radius:var(--radius-sm);padding:10px 22px;cursor:pointer;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif">📥 Charger l'OFP</button><div style="margin-top:12px;font-size:10px;color:var(--text3)">1. Generez l'OFP sur SimBrief · 2. Revenez ici · 3. Chargez l'OFP</div></div>`;
+  document.getElementById('btab-simbrief').innerHTML=`<div style="background:rgba(74,155,184,.08);border:1px solid rgba(74,155,184,.25);border-radius:var(--radius-sm);padding:20px;text-align:center"><div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px">SimBrief ouvert dans un nouvel onglet</div><div style="font-size:12px;color:var(--text2);margin-bottom:16px"><strong style="color:var(--text)">${f.origin} → ${f.destination}</strong> · ${f.aircraft_id}</div><button onclick="loadSimBrief()" style="background:rgba(90,158,111,.15);border:1px solid rgba(90,158,111,.3);color:var(--green);border-radius:var(--radius-sm);padding:10px 22px;cursor:pointer;font-size:12px;font-weight:700;font-family:sans-serif">📥 Charger l'OFP</button><div style="margin-top:12px;font-size:10px;color:var(--text3)">1. Generez l'OFP sur SimBrief · 2. Revenez ici · 3. Chargez l'OFP</div></div>`;
   bTab('simbrief');
 }
 
