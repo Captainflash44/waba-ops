@@ -363,7 +363,6 @@ select.form-input{cursor:pointer;}
       <button class="modal-tab" onclick="switchTab('terrain')">Terrain</button>
       <button class="modal-tab" onclick="switchTab('pax')">Passagers</button>
       <button class="modal-tab" onclick="switchTab('cargo')">Fret</button>
-      <button class="modal-tab" onclick="switchTab('wx')">Météo</button>
       <button class="modal-tab" onclick="switchTab('notam')">NOTAM</button>
       <button class="modal-tab" onclick="switchTab('fuel')">Carburant</button>
       <button class="modal-tab" onclick="switchTab('sol')">Sol</button>
@@ -374,7 +373,6 @@ select.form-input{cursor:pointer;}
       <div class="tab-content" id="tab-terrain"></div>
       <div class="tab-content" id="tab-pax"></div>
       <div class="tab-content" id="tab-cargo"></div>
-      <div class="tab-content" id="tab-wx"></div>
       <div class="tab-content" id="tab-notam"><div style="padding:14px;background:var(--bg3);border-radius:var(--radius-sm);font-size:12px;color:var(--text2)">Consultez Navigraph Charts ou le SIA pour les NOTAMs officiels.</div></div>
       <div class="tab-content" id="tab-fuel"></div>
       <div class="tab-content" id="tab-sol"></div>
@@ -811,6 +809,7 @@ btn.disabled=false;btn.textContent='📥 Charger OFP';}
 function openBriefing(fid){
   currentFlight=flights.find(f=>f.id===fid);if(!currentFlight)return;
   const f=currentFlight,ac=fleet.find(a=>a.id===f.aircraft_id),cpt=pilots.find(p=>p.id===f.captain_id),fo=pilots.find(p=>p.id===f.fo_id);
+  const segLabels={executive:'Vol executif',financial:'Finance & Affaires',luxury:'Vol de luxe',UHNW:'Ultra High Net Worth',transatlantic:'Transatlantique',corporate:'Corporate',diplomatique:'Diplomatique',industriel:'Industriel',ferry:'Mise en place'};
   const cs=callsign(f.flight_no,f.is_ferry,f.aircraft_id),fuel=ac?calcFuel(ac.id,f.distance_nm||300,ac.cruise_kt):null;
   const fuelExtra=parseInt(localStorage.getItem('fe_'+f.id)||'0');
   document.getElementById('m-flightno').textContent=f.flight_no;
@@ -823,7 +822,7 @@ function openBriefing(fid){
   document.getElementById('tab-general').innerHTML=`
     ${f.is_ferry?`<div style="background:rgba(74,155,184,.08);border:1px solid rgba(74,155,184,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">✈ VOL DE MISE EN PLACE - Sans passagers${f.skippable?' - Skippable':''}</div>`:''}
     <div class="brief-grid">
-      ${[['N de vol',f.flight_no],['Callsign radio',cs],['Appareil',`${f.aircraft_id} (${ac?.type||'—'})`],['FL prevu',f.planned_fl||'FL370'],['Depart',`${f.origin} - ${f.dep_time}`],['Arrivee',`${f.destination} - ${f.arr_time}`],['Alternate',f.alternate||'—'],['Distance',`${f.distance_nm} NM`],['Duree',f.duration],['Passagers',f.pax_count>0?`${f.pax_count} PAX`:'Aucun (ferry)'],['Commandant',cpt?.name||'—'],['Copilote',fo?.name||'—']].map(([l,v])=>`<div class="brief-item"><div class="brief-lbl">${l}</div><div class="brief-val">${v}</div></div>`).join('')}
+      ${[['N de vol',f.flight_no],['Callsign radio',cs],['Appareil',`${f.aircraft_id} (${ac?.type||'—'})`],['FL prevu',f.planned_fl||'FL370'],['Depart',`${f.origin} - ${f.dep_time}`],['Arrivee',`${f.destination} - ${f.arr_time}`],['Alternate',f.alternate||'—'],['Distance',`${f.distance_nm} NM`],['Duree',f.duration],['Passagers',f.pax_count>0?`${f.pax_count} PAX`:'Aucun (ferry)'],['Type de vol',segLabels[f.segment]||f.segment||'—'],['Commandant',cpt?.name||'—'],['Copilote',fo?.name||'—']].map(([l,v])=>`<div class="brief-item"><div class="brief-lbl">${l}</div><div class="brief-val">${v}</div></div>`).join('')}
     </div>`;
 
   // ── TERRAIN ──
@@ -876,10 +875,48 @@ function openBriefing(fid){
   }else document.getElementById('tab-pax').innerHTML=`<div style="padding:20px;text-align:center;color:var(--text2)">Aucun passager - vol ferry</div>`;
 
   // ── CARGO ──
-  document.getElementById('tab-cargo').innerHTML=`<div style="font-size:12px;font-weight:700;margin-bottom:12px">Manifeste fret</div>${CARGO_ITEMS.slice(0,2+Math.floor(Math.random()*3)).map(c=>`<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:6px;border:1px solid ${c.hazmat?'rgba(184,90,74,.4)':'var(--border)'}"><div style="flex:1"><div style="font-size:12px;font-weight:600">${c.desc}</div>${c.note?`<div style="font-size:10px;color:var(--text2)">${c.note}</div>`:''}</div><div style="font-size:12px;font-weight:700;font-family:var(--font-mono)">${c.kg} kg</div>${c.hazmat?`<span class="badge" style="background:rgba(184,90,74,.15);color:var(--red);border:1px solid rgba(184,90,74,.3)">DGR</span>`:''}</div>`).join('')}<div style="padding:9px 12px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);font-size:10px;color:var(--text2);margin-top:8px">Masse totale fret estimee : ${CARGO_ITEMS.slice(0,3).reduce((a,c)=>a+c.kg,0)} kg - Conforme IATA DGR pour transport aerien</div>`;
+  // Générer fret réaliste selon le segment du vol
+  const cargoBySegment = {
+    executive: [{desc:'Bagages cabine (2 trolleys)',kg:14,hazmat:false},{desc:'Documents confidentiels',kg:2,hazmat:false}],
+    financial:  [{desc:'Bagages cabine',kg:20,hazmat:false},{desc:'Documents financiers',kg:3,hazmat:false},{desc:'Ordinateurs portables',kg:8,hazmat:false}],
+    luxury:     [{desc:'Bagages de luxe (4 pcs)',kg:40,hazmat:false},{desc:'Bouteilles de vin (caisse)',kg:18,hazmat:false,note:'Fragile - tenir droit'}],
+    UHNW:       [{desc:'Bagages premium (6 pcs)',kg:55,hazmat:false},{desc:'Oeuvres d art emballee',kg:12,hazmat:false,note:'Fragile - temperature controlee'},{desc:'Champagne millesime (caisse)',kg:20,hazmat:false}],
+    transatlantic:[{desc:'Bagages (8 pcs)',kg:80,hazmat:false},{desc:'Materiel informatique',kg:15,hazmat:false},{desc:'Equipements medicaux',kg:8,hazmat:false}],
+    corporate:  [{desc:'Bagages professionnels',kg:25,hazmat:false},{desc:'Echantillons commerciaux',kg:10,hazmat:false}],
+    diplomatique:[{desc:'Valise diplomatique officielle',kg:8,hazmat:false,note:'Scelle - inviolable'},{desc:'Documents officiels',kg:3,hazmat:false}],
+    industriel: [{desc:'Prototypes industriels',kg:35,hazmat:false,note:'Fragile'},{desc:'Documentation technique',kg:5,hazmat:false}],
+    ferry:      [],
+  };
+  const segKey = f.segment || 'executive';
+  const cargoItems = cargoBySegment[segKey] || cargoBySegment.executive;
+  const totalCargo = cargoItems.reduce((a,c)=>a+c.kg,0);
 
-  // ── METEO ──
-  document.getElementById('tab-wx').innerHTML=`<div style="background:rgba(74,155,184,.07);border:1px solid rgba(74,155,184,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">Cliquez sur SimBrief pour obtenir les METARs temps reel</div>${[{icao:f.origin,role:'Depart'},{icao:f.destination,role:'Destination'},{icao:f.alternate||'LFRS',role:'Alternate'}].map(wx=>`<div class="card" style="margin-bottom:10px"><div style="display:flex;gap:8px;margin-bottom:8px;align-items:center"><div class="mono fw7" style="font-size:13px;color:var(--blue)">${wx.icao}</div><span style="font-size:10px;color:var(--text2)">${wx.role}</span></div><div class="metar-box">METAR ${wx.icao} - Chargez SimBrief pour les donnees temps reel</div></div>`).join('')}`;
+  // Segment labels
+  const segLabels = {executive:'Vol exécutif',financial:'Finance & Affaires',luxury:'Vol de luxe',UHNW:'Ultra High Net Worth',transatlantic:'Transatlantique',corporate:'Corporate',diplomatique:'Diplomatique',industriel:'Industriel',ferry:'Mise en place'};
+  const segLabel = segLabels[segKey] || segKey;
+
+  document.getElementById('tab-cargo').innerHTML = f.is_ferry
+    ? `<div style="text-align:center;padding:30px;color:var(--text2)"><div style="font-size:28px;margin-bottom:10px;opacity:.3">↑</div>Vol ferry - Aucun fret commercial</div>`
+    : cargoItems.length === 0
+    ? `<div style="text-align:center;padding:30px;color:var(--text2)">Aucun fret pour ce vol</div>`
+    : `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700">Manifeste fret</div>
+        <span class="badge" style="background:rgba(184,151,62,.12);color:var(--gold);border:1px solid rgba(184,151,62,.25)">${segLabel}</span>
+      </div>
+      ${cargoItems.map(c=>`<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:6px;border:1px solid ${c.hazmat?'rgba(184,90,74,.4)':'var(--border)'}">
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600">${c.desc}</div>
+          ${c.note?`<div style="font-size:10px;color:var(--text2)">${c.note}</div>`:''}
+        </div>
+        <div class="mono fw7" style="font-size:12px">${c.kg} kg</div>
+        ${c.hazmat?`<span class="badge" style="background:rgba(184,90,74,.15);color:var(--red);border:1px solid rgba(184,90,74,.3)">DGR</span>`:''}
+      </div>`).join('')}
+      <div style="padding:9px 12px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);font-size:10px;color:var(--text2);margin-top:8px;display:flex;justify-content:space-between">
+        <span>Masse totale fret : <strong>${totalCargo} kg</strong></span>
+        <span>Conforme IATA pour transport aerien</span>
+      </div>`;
+
+  // Météo supprimée - disponible dans SimBrief OFP
 
   // ── FUEL ──
   document.getElementById('tab-fuel').innerHTML=fuel?`
@@ -940,7 +977,34 @@ function openBriefing(fid){
   const arrOblig=SVCS_ARR.filter(s=>s.req&&s.price).reduce((a,s)=>a+s.price,0);
   const totalEst=fuelEur+depOblig+arrOblig;
 
-  function svcCard(s){return`<div class="service-card" style="border-color:${s.avail?(s.req?'rgba(184,151,62,.3)':'var(--border)'):'#2a2a2a'};opacity:${s.avail?1:.45}"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><div style="font-size:10px;font-weight:600;color:${s.avail?'var(--text)':'var(--text2)'}">${s.n}</div><div>${s.avail?(s.req?'✓':'○'):'✗'}</div></div><div style="font-size:9px;color:var(--text2);margin-bottom:4px">${s.note}</div>${s.price!==null?`<div style="font-size:10px;font-weight:700;color:${s.price===0?'var(--green)':'var(--gold)'}">~${s.price===0?'Inclus':s.price.toLocaleString('fr-FR')+'€'}</div>`:''}</div>`;}
+  let _ordered={};
+  function svcCard(s,side){
+    const id='svc-'+side+'-'+s.n.replace(/[^a-zA-Z]/g,'');
+    return`<div class="service-card" id="${id}" style="border-color:${s.avail?(s.req?'rgba(184,151,62,.3)':'var(--border)'):'#2a2a2a'};opacity:${s.avail?1:.45}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <div style="font-size:10px;font-weight:600;color:${s.avail?'var(--text)':'var(--text2)'}">${s.n}</div>
+        <div style="font-size:13px">${s.avail?(s.req?'✓':'○'):'✗'}</div>
+      </div>
+      <div style="font-size:9px;color:var(--text2);margin-bottom:5px">${s.note}</div>
+      ${s.price!==null?`<div style="font-size:10px;font-weight:700;color:${s.price===0?'var(--green)':'var(--gold)'}">~${s.price===0?'Inclus':s.price.toLocaleString('fr-FR')+'€'}</div>`:''}
+      ${s.avail&&!s.req?`<button onclick="toggleSvc('${id}','${side}',${s.price||0})" style="margin-top:6px;width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:4px;padding:4px;cursor:pointer;font-size:9px;font-family:var(--font-body);transition:all .15s" id="btn-${id}">Commander</button>`:''}
+      ${s.req?`<div style="font-size:9px;color:var(--gold);margin-top:4px;font-weight:700">Inclus automatiquement</div>`:''}
+    </div>`;
+  }
+  function toggleSvc(id,side,price){
+    const btn=document.getElementById('btn-'+id);
+    if(!btn)return;
+    const isOrdered=btn.textContent.trim()==='Commande';
+    btn.textContent=isOrdered?'Commander':'Commande';
+    btn.style.background=isOrdered?'var(--bg3)':'var(--gold)';
+    btn.style.color=isOrdered?'var(--text2)':'#000';
+    btn.style.borderColor=isOrdered?'var(--border)':'var(--gold)';
+    if(!_ordered[side])_ordered[side]=0;
+    _ordered[side]+=isOrdered?-price:price;
+    const costEl=document.getElementById(side+'-cost');
+    if(costEl)costEl.textContent='~'+_ordered[side].toLocaleString('fr-FR')+'€ (+optionnels)';
+    showToast(isOrdered?`${id.split('-').pop()} retire`:`Service commande (+${price}€)`);
+  }
 
   document.getElementById('tab-sol').innerHTML=`
     <div style="background:rgba(184,151,62,.1);border:1px solid rgba(184,151,62,.3);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px">
@@ -959,7 +1023,7 @@ function openBriefing(fid){
       <div class="brief-item"><div class="brief-lbl">Parking</div><div class="brief-val mono">${fDep.parking}</div></div>
     </div>
     <div class="sec-title mb8">Services au depart</div>
-    <div class="g3 mb16">${SVCS_DEP.map(svcCard).join('')}</div>
+    <div class="g3 mb16">${SVCS_DEP.map(s=>svcCard(s,'dep')).join('')}</div>
     <div class="divider"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:var(--gold)"></div><div style="font-size:11px;font-weight:800;letter-spacing:1px;font-family:var(--font-mono)">ARRIVEE - ${f.destination}</div></div>
     <div class="g2 mb12">
@@ -968,7 +1032,7 @@ function openBriefing(fid){
     </div>
     ${fArr.lim&&fArr.lim.length?`<div style="background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px"><div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:5px">LIMITATIONS</div>${fArr.lim.map(l=>`<div style="font-size:11px;margin-bottom:3px">- ${l}</div>`).join('')}</div>`:''}
     <div class="sec-title mb8">Services a l'arrivee</div>
-    <div class="g3 mb12">${SVCS_ARR.map(svcCard).join('')}</div>
+    <div class="g3 mb12">${SVCS_ARR.map(s=>svcCard(s,'arr')).join('')}</div>
     <div class="card card-sm"><div style="font-size:10px;font-weight:800;margin-bottom:6px">NETTOYAGE CABINE</div><div style="font-size:11px;color:var(--text2)">${isLarge?'BBJ2 - Nettoyage FBO commande. Equipe dediee, vaisselle, literie. A confirmer 2h avant arrivee.':'Citations - Nettoyage a charge equipage. Checklist dans les documents. Prevoir 20-30 min apres le vol.'}</div></div>
   `;
 
