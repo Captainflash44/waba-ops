@@ -564,9 +564,13 @@ function renderDashboard(){
             ${expiryHtml}
           </div>
         </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-gold" onclick="openBriefing('${nextFlight.id}')" style="font-size:11px">📋 Briefing</button>
-          <button class="btn btn-ghost" onclick="showPage('planning')" style="font-size:11px">Rotation</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${getRotation(nextFlight.rotation_id||nextFlight.id).filter(s=>!s.is_virtual||!s.is_ferry).map(s=>{
+            const label=s.sequence===1?'↑ Briefing MEP':s.sequence===3?'↓ Briefing RTB':'📋 Briefing PAX';
+            const cl=s.is_ferry?'btn btn-blue':'btn btn-gold';
+            return`<button class="${cl}" onclick="openBriefing('${s.id}')" style="font-size:10px;padding:5px 10px">${label}</button>`;
+          }).join('')}
+          <button class="btn btn-ghost" onclick="showPage('planning')" style="font-size:10px;padding:5px 10px">Rotation →</button>
         </div>
       </div>
       ${rot.map(f=>{const sc=f.is_ferry?'var(--blue)':'var(--green)';return`<div class="seg-row" style="border-left-color:${sc}">
