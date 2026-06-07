@@ -659,59 +659,201 @@ async function generateSchedule(){
   const btn=document.getElementById('gen-btn');btn.textContent='Generation...';btn.disabled=true;
   await db.from('flights').delete().eq('week_start',WEEK);
   const availFleet=fleet.filter(a=>a.status!=='MAINTENANCE');
-  const routes=[...ROUTES].sort(()=>Math.random()-.5).slice(0,10);
-  const newF=[],acState={};
-  availFleet.forEach(a=>{acState[a.id]={pos:a.current_airport||a.base,nextMin:7*60};});
+  if(!availFleet.length){showToast('Aucun appareil disponible','err');btn.textContent='Generer le planning semaine 24';btn.disabled=false;return;}
 
-  // Preload coords from Supabase airports table
-  const allIcaos=new Set();routes.forEach(r=>{allIcaos.add(r.from);allIcaos.add(r.to);});availFleet.forEach(a=>{allIcaos.add(a.current_airport||a.base);allIcaos.add(a.base);});
-  const {data:apData}=await db.from('airports').select('*').in('icao',[...allIcaos]);
+  // Preload airport coords
+  const allIcaos=new Set();
+  ROUTES.forEach(r=>{allIcaos.add(r.from);allIcaos.add(r.to);});
+  availFleet.forEach(a=>{allIcaos.add(a.current_airport||a.base);allIcaos.add(a.base);});
+  const{data:apData}=await db.from('airports').select('*').in('icao',[...allIcaos]);
   const apCache={};if(apData)apData.forEach(a=>{apCache[a.icao]=a;});
   function getCoords(icao){return apCache[icao]||AP[icao]||{lat:47.15,lon:-1.6};}
+  function nm(a,b){const ca=getCoords(a),cb=getCoords(b);return distNM(ca.lat,ca.lon,cb.lat,cb.lon);}
+  function durMs(nmDist,kt){return Math.round(nmDist/kt*60)*60*1000;}
+  function fmtT(ms){const d=new Date(ms);return String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');}
+  function fmtD(ms){return new Date(ms).toISOString().split('T')[0];}
+  function fmtDur(ms){const m=Math.round(ms/60000);return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0');}
 
-  for(let i=0;i<routes.length;i++){
-    const r=routes[i],dayIdx=i%7;
-    const d=new Date('2026-06-09');d.setDate(d.getDate()+dayIdx);
-    const dateStr=d.toISOString().split('T')[0];
-    const compatAC=availFleet.filter(a=>r.ac.includes(a.icao)&&calcFuel(a.id,r.dist,a.cruise_kt)?.feasible);
-    if(!compatAC.length)continue;
-    const ac=compatAC.sort((a,b)=>{const pa=getCoords(acState[a.id].pos),pb=getCoords(acState[b.id].pos),dep=getCoords(r.from);return distNM(pa.lat,pa.lon,dep.lat,dep.lon)-distNM(pb.lat,pb.lon,dep.lat,dep.lon);})[0];
+  const WEEK_START_MS=new Date('2026-06-09T07:00:00Z').getTime();
+  const DAY_MS=24*60*60*1000;
+
+  // Pour chaque avion, on va construire une séquence de rotations cohérente
+  const newF=[];
+
+  // Mélanger les routes et les partager entre les avions
+  const allRoutes=[...ROUTES].sort(()=>Math.random()-.5);
+  
+  // Assigner les routes aux avions selon compatibilité
+  // Chaque avion reçoit une liste ordonnée de routes à faire dans la semaine
+  const acRoutes={};
+  availFleet.forEach(a=>{acRoutes[a.id]=[];});
+  
+  // Distribution round-robin par avion compatible
+  const routePool=allRoutes.slice(0,12);
+  routePool.forEach((r,idx)=>{
+    const compat=availFleet.filter(a=>r.ac.includes(a.icao)&&calcFuel(a.id,r.dist,a.cruise_kt)?.feasible);
+    if(!compat.length)return;
+    // Choisir l'avion qui a le moins de routes assignées parmi les compatibles
+    const ac=compat.sort((a,b)=>acRoutes[a.id].length-acRoutes[b.id].length)[0];
+    acRoutes[ac.id].push(r);
+  });
+
+  // Générer les vols pour chaque avion
+  for(const ac of availFleet){
+    const routes=acRoutes[ac.id];
+    if(!routes.length)continue;
+
     const crew=getCrew(ac.icao);if(!crew)continue;
-    const state=acState[ac.id],rotId='ROT'+Date.now()+i;
-    let tMin=Math.max(state.nextMin,dayIdx*24*60+7*60);
+    
+    // Position et disponibilité de l'avion
+    let curPos=ac.current_airport||ac.base;
+    let availAt=WEEK_START_MS;
 
-    if(state.pos!==r.from){
-      const da=getCoords(state.pos),aa=getCoords(r.from);
-      const fd=Math.round(distNM(da.lat,da.lon,aa.lat,aa.lon)),fDur=Math.round(fd/(ac.cruise_kt/60));
-      const fArr=tMin+fDur+20;
-      newF.push({flight_no:genNo(state.pos,true),rotation_id:rotId,sequence:1,aircraft_id:ac.id,week_start:WEEK,scheduled_date:dateStr,dep_time:fmtTime(tMin),arr_time:fmtTime(fArr),origin:state.pos,destination:r.from,route_label:`Mise en place ${state.pos} > ${r.from}`,distance_nm:fd,duration:`${Math.floor(fDur/60)}h${String(fDur%60).padStart(2,'0')}`,pax_count:0,segment:'ferry',planned_fl:'FL310',alternate:'LFRS',captain_id:crew.cpt.id,fo_id:crew.fo.id,status:'SCHEDULED',is_ferry:true,skippable:true});
-      tMin=fArr+30;
-    }
+    // Espacer les routes sur la semaine
+    const nRoutes=routes.length;
+    routes.forEach((r,idx)=>{
+      // Heure de début de cette rotation dans la semaine
+      const dayIdx=Math.floor(idx*(7/nRoutes));
+      const dayStartMs=WEEK_START_MS+dayIdx*DAY_MS;
+      let curMs=Math.max(availAt, dayStartMs);
 
-    const depH=Math.floor(tMin/60),depM=tMin%60,dur=Math.round(r.dist/(ac.cruise_kt/60)),arrMin=tMin+dur+20;
-    const da2=getCoords(r.from),aa2=getCoords(r.to);const eb=aa2.lon>da2.lon;
-    let fl=r.dist<200?250:r.dist<500?350:r.dist<1500?390:420;fl=Math.min(fl,ac.max_fl);
-    const flR=eb?(fl%20===10?fl:fl+10):(fl%20===0?fl:fl-10);
-    const pFL='FL'+Math.min(Math.max(flR,240),ac.max_fl);
+      const rotId='ROT'+Date.now()+ac.id+idx;
 
-    newF.push({flight_no:genNo(r.from,false),rotation_id:rotId,sequence:2,aircraft_id:ac.id,week_start:WEEK,scheduled_date:dateStr,dep_time:`${String(depH).padStart(2,'0')}:${String(depM).padStart(2,'0')}`,arr_time:fmtTime(arrMin),origin:r.from,destination:r.to,route_label:r.label,distance_nm:r.dist,duration:`${Math.floor(dur/60)}h${String(dur%60).padStart(2,'0')}`,pax_count:Math.floor(Math.random()*(ac.seats-1))+1,segment:r.seg,planned_fl:pFL,alternate:r.to==='LFPB'?'LFPO':r.to==='EGLF'?'EGKB':'LFRS',captain_id:crew.cpt.id,fo_id:crew.fo.id,status:'SCHEDULED',is_ferry:false,skippable:false});
-    state.pos=r.to;state.nextMin=arrMin+45;
+      // ── RÈGLE 36H ──
+      // Si l'avion n'est pas à la base et qu'il y a plus de 36h depuis sa dernière arrivée
+      if(curPos!==ac.base&&(curMs-availAt)>36*60*60*1000){
+        // Retour base d'abord
+        const rtbDist=Math.round(nm(curPos,ac.base));
+        const rtbDurMs=durMs(rtbDist,ac.cruise_kt);
+        // On insère le retour base dans le vol précédent (sequence 3)
+        // déjà géré en fin de rotation - ici on s'assure juste que la pos est bonne
+        curPos=ac.base;
+      }
 
-    const nxt=routes.slice(i+1).find(nr=>availFleet.some(a2=>a2.id===ac.id&&nr.ac.includes(a2.icao)));
-    if(!nxt&&r.to!==ac.base){
-      const fa=getCoords(r.to),ba=getCoords(ac.base);const rd=Math.round(distNM(fa.lat,fa.lon,ba.lat,ba.lon)),rDur=Math.round(rd/(ac.cruise_kt/60));const rDep=state.nextMin,rArr=rDep+rDur+20;const rd2=new Date('2026-06-09');rd2.setDate(rd2.getDate()+dayIdx);
-      newF.push({flight_no:genNo(r.to,true),rotation_id:rotId,sequence:3,aircraft_id:ac.id,week_start:WEEK,scheduled_date:rd2.toISOString().split('T')[0],dep_time:fmtTime(rDep),arr_time:fmtTime(rArr),origin:r.to,destination:ac.base,route_label:`Retour base ${r.to} > ${ac.base}`,distance_nm:rd,duration:`${Math.floor(rDur/60)}h${String(rDur%60).padStart(2,'0')}`,pax_count:0,segment:'ferry',planned_fl:'FL310',alternate:'LFRS',captain_id:crew.cpt.id,fo_id:crew.fo.id,status:'SCHEDULED',is_ferry:true,skippable:true});
-      state.pos=ac.base;
-    }
+      // ── MEP si l'avion n'est pas au bon départ ──
+      if(curPos!==r.from){
+        const mepDist=Math.round(nm(curPos,r.from));
+        const mepDurMs=durMs(mepDist,ac.cruise_kt);
+        const mepDepMs=curMs;
+        const mepArrMs=mepDepMs+mepDurMs+20*60*1000;
+
+        newF.push({
+          flight_no:genNo(curPos,true),rotation_id:rotId,sequence:1,
+          aircraft_id:ac.id,week_start:WEEK,
+          scheduled_date:fmtD(mepDepMs),
+          dep_time:fmtT(mepDepMs),arr_time:fmtT(mepArrMs),
+          origin:curPos,destination:r.from,
+          route_label:`Mise en place ${curPos} → ${r.from}`,
+          distance_nm:mepDist,
+          duration:fmtDur(mepDurMs),
+          pax_count:0,segment:'ferry',planned_fl:'FL310',alternate:'LFRS',
+          captain_id:crew.cpt.id,fo_id:crew.fo.id,
+          status:'SCHEDULED',is_ferry:true,skippable:true,is_virtual:true,
+        });
+        curMs=mepArrMs+30*60*1000;
+        curPos=r.from; // L'avion est maintenant au départ
+      }
+
+      // ── VOL COMMERCIAL PAX ──
+      const paxDurMs=durMs(r.dist,ac.cruise_kt);
+      const paxDepMs=curMs;
+      const paxArrMs=paxDepMs+paxDurMs+20*60*1000;
+
+      // FL RVSM
+      const da=getCoords(r.from),aa=getCoords(r.to);
+      const eb=aa.lon>da.lon;
+      let fl=r.dist<200?250:r.dist<500?350:r.dist<1500?390:420;
+      fl=Math.min(fl,ac.max_fl);
+      const flR=eb?(fl%20===10?fl:fl+10):(fl%20===0?fl:fl-10);
+
+      newF.push({
+        flight_no:genNo(r.from,false),rotation_id:rotId,sequence:2,
+        aircraft_id:ac.id,week_start:WEEK,
+        scheduled_date:fmtD(paxDepMs),
+        dep_time:fmtT(paxDepMs),arr_time:fmtT(paxArrMs),
+        origin:r.from,destination:r.to,route_label:r.label,
+        distance_nm:r.dist,duration:fmtDur(paxDurMs),
+        pax_count:Math.floor(Math.random()*(ac.seats-1))+1,
+        segment:r.seg,
+        planned_fl:'FL'+Math.min(Math.max(flR,240),ac.max_fl),
+        alternate:r.to==='LFPB'?'LFPO':r.to==='EGLF'?'EGKB':'LFRS',
+        captain_id:crew.cpt.id,fo_id:crew.fo.id,
+        status:'SCHEDULED',is_ferry:false,skippable:false,is_virtual:true,
+      });
+
+      // Mettre à jour position et disponibilité IMMÉDIATEMENT après le vol PAX
+      curPos=r.to;
+      availAt=paxArrMs+45*60*1000;
+
+      // ── RÈGLE 36H — Retour base ? ──
+      const nextRoute=routes[idx+1];
+      if(nextRoute){
+        // Calculer le gap jusqu'à la prochaine rotation
+        const nextDayIdx=Math.floor((idx+1)*(7/nRoutes));
+        const nextDayMs=WEEK_START_MS+nextDayIdx*DAY_MS;
+        const gapMs=Math.max(nextDayMs,availAt)-availAt;
+
+        if(gapMs>36*60*60*1000){
+          // Gap > 36h → retour base si pas déjà là
+          if(curPos!==ac.base){
+            const rtbDist=Math.round(nm(curPos,ac.base));
+            const rtbDurMs=durMs(rtbDist,ac.cruise_kt);
+            const rtbDepMs=availAt;
+            const rtbArrMs=rtbDepMs+rtbDurMs+20*60*1000;
+            newF.push({
+              flight_no:genNo(curPos,true),rotation_id:rotId,sequence:3,
+              aircraft_id:ac.id,week_start:WEEK,
+              scheduled_date:fmtD(rtbDepMs),
+              dep_time:fmtT(rtbDepMs),arr_time:fmtT(rtbArrMs),
+              origin:curPos,destination:ac.base,
+              route_label:`Retour base ${curPos} → ${ac.base}`,
+              distance_nm:rtbDist,duration:fmtDur(rtbDurMs),
+              pax_count:0,segment:'ferry',planned_fl:'FL310',alternate:'LFRS',
+              captain_id:crew.cpt.id,fo_id:crew.fo.id,
+              status:'SCHEDULED',is_ferry:true,skippable:true,is_virtual:true,
+            });
+            curPos=ac.base;
+            availAt=rtbArrMs+30*60*1000;
+          }
+        }
+        // Si gap < 36h → MEP vers prochain départ générée au prochain tour de boucle
+      } else {
+        // Dernière rotation → retour base systématique
+        if(curPos!==ac.base){
+          const rtbDist=Math.round(nm(curPos,ac.base));
+          const rtbDurMs=durMs(rtbDist,ac.cruise_kt);
+          const rtbDepMs=availAt;
+          const rtbArrMs=rtbDepMs+rtbDurMs+20*60*1000;
+          newF.push({
+            flight_no:genNo(curPos,true),rotation_id:rotId,sequence:3,
+            aircraft_id:ac.id,week_start:WEEK,
+            scheduled_date:fmtD(rtbDepMs),
+            dep_time:fmtT(rtbDepMs),arr_time:fmtT(rtbArrMs),
+            origin:curPos,destination:ac.base,
+            route_label:`Retour base ${curPos} → ${ac.base}`,
+            distance_nm:rtbDist,duration:fmtDur(rtbDurMs),
+            pax_count:0,segment:'ferry',planned_fl:'FL310',alternate:'LFRS',
+            captain_id:crew.cpt.id,fo_id:crew.fo.id,
+            status:'SCHEDULED',is_ferry:true,skippable:true,is_virtual:true,
+          });
+          curPos=ac.base;
+        }
+      }
+    });
   }
 
-  if(newF.length){const{error}=await db.from('flights').insert(newF);if(error)showToast('Erreur: '+error.message,'err');else{const c=newF.filter(f=>!f.is_ferry).length,fe=newF.filter(f=>f.is_ferry).length;showToast(`${c} vols commerciaux + ${fe} segments ferry generes !`);showPage('schedule');}}
-  else showToast('Aucun vol genere - verifiez qualifications','err');
+  if(newF.length){
+    const{error}=await db.from('flights').insert(newF);
+    if(error)showToast('Erreur: '+error.message,'err');
+    else{
+      const c=newF.filter(f=>!f.is_ferry).length,fe=newF.filter(f=>f.is_ferry).length;
+      showToast(`${c} vols commerciaux + ${fe} segments ferry generes !`);
+      showPage('schedule');
+    }
+  }else showToast('Aucun vol genere - verifiez qualifications','err');
   btn.textContent='Generer le planning semaine 24';btn.disabled=false;
 }
-// ═══════════════════════════════════
-// SCHEDULE RENDER
-// ═══════════════════════════════════
+
 function renderSchedule(){
   const el=document.getElementById('schedule-list');
   const comm=flights.filter(f=>!f.is_ferry).length,ferry=flights.filter(f=>f.is_ferry).length;
@@ -728,7 +870,7 @@ function renderSchedule(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:center;gap:10px">
           <div class="mono fw7" style="font-size:15px;color:${col}">${main.aircraft_id}</div>
-          <div><div style="font-size:12px;font-weight:600">${main.origin} → ${main.destination}</div><div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${main.scheduled_date} - ${rot.length} segment(s)</div></div>
+          <div><div style="font-size:12px;font-weight:600">${main.origin} → ${main.destination}</div><div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${main.scheduled_date} · ${rot.length} segment(s)</div></div>
         </div>
         <div style="text-align:right">
           ${main.reserved_by
@@ -743,9 +885,9 @@ function renderSchedule(){
       return`<div class="seg-row" style="border-left-color:${sc};opacity:${done?.6:1}">
         <div style="min-width:44px;text-align:center"><div style="font-size:9px;font-weight:800;color:${sc};font-family:var(--font-mono)">${iF?(f.sequence===1?'↑ ':f.sequence===3?'↓ ':''):'✈ '}${sl}</div><div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${f.dep_time||''}</div></div>
         <div style="width:1px;height:30px;background:var(--border)"></div>
-        <div style="flex:1"><div style="font-size:12px;font-weight:600">${f.origin} → ${f.destination}</div><div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${f.distance_nm} NM - ${f.duration}${f.pax_count>0?` - ${f.pax_count} PAX`:''}</div></div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600">${f.origin} → ${f.destination}</div><div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${f.distance_nm} NM · ${f.duration}${f.pax_count>0?` · ${f.pax_count} PAX`:''}</div></div>
         <div style="display:flex;gap:5px;align-items:center">
-          ${done?`<span style="font-size:10px;color:var(--text2)">${f.status==='SKIPPED'?'Skippe':'Effectue'}</span>`:`<button class="btn btn-blue" style="font-size:10px;padding:4px 9px" onclick="openBriefing('${f.id}')">Briefing</button>${iF?`<button class="btn btn-ghost" style="font-size:10px;padding:4px 9px" onclick="skipSeg('${f.id}')">Skip</button>`:''}<button class="btn btn-green" style="font-size:10px;padding:4px 9px" onclick="markDone('${f.id}')">✓</button>`}
+          ${done?`<span style="font-size:10px;color:var(--text2)">${f.status==='SKIPPED'?'Skippe':'Effectue'}</span>`:`<button class="btn btn-blue" style="font-size:10px;padding:4px 9px" onclick="openBriefing('${f.id}')">Briefing</button>${iF&&f.is_virtual?`<button class="btn btn-ghost" style="font-size:10px;padding:4px 9px" onclick="skipSeg('${f.id}')">Skip</button>`:''}<button class="btn btn-green" style="font-size:10px;padding:4px 9px" onclick="markDone('${f.id}')">✓</button>`}
         </div>
       </div>`}).join('')}
     </div>`;}).join('');
