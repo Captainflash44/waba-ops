@@ -1,1324 +1,901 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WABA — Espace Pilote</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700&family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
 :root{
-  --bg:#0a0f1e;--bg2:#080c18;--card:#111827;--card2:#0d1526;
-  --border:#1e2a3a;--border2:#2e3a4a;
-  --text:#c8d0e7;--text2:#6b7a99;--text3:#3a4a6a;
-  --gold:#C8A96E;--blue:#7EB8D4;--green:#A8D5A2;--orange:#E8A87C;
-  --sidebar:220px;
+  --sidebar-w:228px;--radius:10px;--radius-sm:6px;--transition:.2s ease;
+  --font-display:'Playfair Display',serif;--font-mono:'JetBrains Mono',monospace;--font-body:'DM Sans',sans-serif;
+  --gold:#B8973E;--gold-light:#D4AF60;--blue:#4A9BB8;--green:#5A9E6F;--orange:#C47A3A;--red:#B85A4A;
 }
-*{box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
-
-/* SIDEBAR */
-#sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;}
-.sidebar-logo{padding:22px 20px 18px;border-bottom:1px solid var(--border);}
-.airline{font-size:9px;color:var(--gold);font-weight:800;letter-spacing:3px;margin-bottom:3px;}
-.sname{font-size:16px;font-weight:900;color:#fff;font-family:'Playfair Display',serif;line-height:1.2;}
-.pilot-badge{margin-top:10px;background:var(--card2);border-radius:8px;padding:10px 12px;}
-.pilot-name{font-size:13px;color:var(--text);font-weight:700;}
-.pilot-role{font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
-.pilot-msfs{font-size:10px;color:var(--text2);margin-top:2px;font-family:'JetBrains Mono',monospace;}
-nav{flex:1;padding:10px 8px;overflow-y:auto;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;margin-bottom:3px;font-size:12px;font-weight:500;color:var(--text2);border:1px solid transparent;transition:all .15s;position:relative;}
-.nav-item:hover{color:var(--text);background:#ffffff08;}
-.nav-item.active{color:var(--gold);background:#C8A96E18;border-color:#C8A96E33;font-weight:700;}
-.nav-badge{position:absolute;right:8px;background:var(--orange);border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#000;}
-.sidebar-footer{padding:12px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);}
-.btn-logout{width:100%;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:8px;cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;transition:all .15s;margin-top:8px;}
-.btn-logout:hover{border-color:var(--orange);color:var(--orange);}
-
-/* MAIN */
-#main{margin-left:var(--sidebar);min-height:100vh;padding:26px 30px;}
-.page{display:none;animation:fadeIn .25s ease;}
-.page.active{display:block;}
-.page-title{font-size:22px;font-weight:900;color:#fff;margin-bottom:3px;font-family:'Playfair Display',serif;}
-.page-sub{font-size:12px;color:var(--text2);margin-bottom:22px;}
-.stitle{font-size:11px;font-weight:800;color:var(--text);margin-bottom:12px;letter-spacing:2px;text-transform:uppercase;}
-.card{background:var(--card);border-radius:13px;padding:18px;border:1px solid var(--border);}
-.card2{background:var(--card2);border-radius:8px;padding:9px 13px;}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
-.badge{display:inline-block;border-radius:4px;padding:2px 9px;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;}
-.btn{border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;}
-.btn-gold{background:var(--gold);color:#000;}
-.btn-blue{background:#7EB8D422;border:1px solid #7EB8D444;color:var(--blue);}
-.btn-green{background:#A8D5A222;border:1px solid #A8D5A244;color:var(--green);}
+[data-theme="dark"]{
+  --bg:#0C0C0E;--bg2:#111114;--bg3:#16161A;--bg4:#1C1C22;
+  --border:#252530;--border2:#32323E;
+  --text:#E8E6E0;--text2:#7A7880;--text3:#42404A;
+  --sidebar-bg:#0A0A0C;--card-bg:#111114;--hover:#1A1A1E;--input-bg:#0E0E12;
+  --shadow:0 2px 20px rgba(0,0,0,.5);
+}
+[data-theme="light"]{
+  --bg:#F4F2EE;--bg2:#ECEAE6;--bg3:#E4E2DE;--bg4:#DCDAD6;
+  --border:#D0CEC8;--border2:#B8B6B0;
+  --text:#1A1816;--text2:#5A5856;--text3:#9A9896;
+  --sidebar-bg:#1A1816;--card-bg:#F8F6F2;--hover:#E8E6E2;--input-bg:#ECEAE6;
+  --shadow:0 2px 20px rgba(0,0,0,.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:13px;line-height:1.5;min-height:100vh;overflow-x:hidden;transition:background var(--transition),color var(--transition);}
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--sidebar-bg);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;}
+[data-theme="light"] #sidebar{background:#1A1816;border-right-color:#2A2826;}
+.sb-header{padding:20px 18px 14px;border-bottom:1px solid rgba(255,255,255,.06);}
+.sb-logo{font-family:var(--font-display);font-size:22px;font-weight:700;color:#fff;letter-spacing:6px;margin-bottom:1px;}
+.sb-tag{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:10px;}
+.pilot-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm);padding:10px 12px;margin-top:8px;}
+.pilot-name{font-size:13px;color:#fff;font-weight:600;margin-bottom:2px;}
+.pilot-role{font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;}
+.pilot-ratings{display:flex;gap:4px;margin-top:4px;}
+.rating-badge{font-size:8px;font-weight:700;font-family:var(--font-mono);padding:2px 6px;border-radius:3px;background:rgba(184,151,62,.15);color:var(--gold);border:1px solid rgba(184,151,62,.3);}
+nav{flex:1;padding:8px 8px;overflow-y:auto;scrollbar-width:none;}
+nav::-webkit-scrollbar{display:none;}
+.nav-sec{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.18);padding:10px 10px 5px;font-family:var(--font-mono);}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;margin-bottom:2px;font-size:12px;font-weight:500;color:rgba(255,255,255,.42);border:1px solid transparent;transition:all var(--transition);position:relative;}
+.nav-item:hover{color:rgba(255,255,255,.72);background:rgba(255,255,255,.04);}
+.nav-item.active{color:#fff;background:rgba(184,151,62,.12);border-color:rgba(184,151,62,.25);}
+.nav-icon{font-size:13px;width:18px;text-align:center;flex-shrink:0;}
+.nav-item.active .nav-icon{color:var(--gold);}
+.nav-badge{position:absolute;right:8px;background:var(--orange);border-radius:10px;padding:1px 6px;font-size:9px;font-weight:700;color:#fff;font-family:var(--font-mono);}
+.sb-footer{padding:10px 12px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px;}
+.theme-row{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(255,255,255,.04);border-radius:var(--radius-sm);cursor:pointer;border:1px solid rgba(255,255,255,.07);}
+.theme-lbl{font-size:9px;color:rgba(255,255,255,.35);font-family:var(--font-mono);letter-spacing:1px;}
+.theme-sw{width:28px;height:16px;background:rgba(255,255,255,.1);border-radius:8px;position:relative;transition:background var(--transition);}
+.theme-sw::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.45);transition:transform var(--transition);}
+[data-theme="light"] .theme-sw{background:var(--gold);}
+[data-theme="light"] .theme-sw::after{transform:translateX(12px);background:#fff;}
+.auth-btn{width:100%;background:transparent;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.38);border-radius:var(--radius-sm);padding:7px 10px;cursor:pointer;font-size:11px;font-family:var(--font-body);text-align:left;transition:all var(--transition);display:flex;align-items:center;gap:6px;}
+.auth-btn:hover{border-color:var(--orange);color:var(--orange);}
+.admin-link{display:flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(184,151,62,.07);border:1px solid rgba(184,151,62,.18);border-radius:var(--radius-sm);color:rgba(184,151,62,.8);font-size:10px;font-family:var(--font-body);text-decoration:none;}
+#main{margin-left:var(--sidebar-w);min-height:100vh;padding:26px 30px;}
+.page{display:none;}
+.page.active{display:block;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+.page-title{font-family:var(--font-display);font-size:24px;font-weight:500;margin-bottom:2px;}
+.page-sub{font-size:11px;color:var(--text2);margin-bottom:22px;font-family:var(--font-mono);}
+.sec-title{font-size:10px;font-weight:700;color:var(--text2);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-family:var(--font-mono);}
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:18px;}
+.card-sm{padding:12px 14px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.kpi{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+.kpi-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:7px;font-family:var(--font-mono);}
+.kpi-val{font-family:var(--font-mono);font-size:26px;font-weight:700;line-height:1;margin-bottom:3px;}
+.kpi-sub{font-size:11px;color:var(--text2);}
+.badge{display:inline-block;border-radius:4px;padding:2px 8px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-family:var(--font-mono);}
+.btn{border:none;border-radius:var(--radius-sm);padding:7px 14px;cursor:pointer;font-size:11px;font-weight:600;font-family:var(--font-body);transition:all var(--transition);display:inline-flex;align-items:center;gap:5px;}
+.btn-gold{background:var(--gold);color:#fff;}
+.btn-gold:hover{background:var(--gold-light);}
 .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2);}
-.btn-orange{background:#E8A87C22;border:1px solid #E8A87C44;color:var(--orange);}
-
-/* KPI */
-.kpi{background:var(--card);border-radius:13px;padding:16px 18px;border:1px solid var(--border);}
-.kpi-label{font-size:10px;color:var(--text2);margin-bottom:7px;letter-spacing:1px;text-transform:uppercase;}
-.kpi-val{font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;}
-.kpi-sub{font-size:11px;color:var(--text2);margin-top:3px;}
-
-/* ROTATION CARD */
-.rotation-card{background:var(--card);border-radius:13px;padding:18px;border:1px solid var(--border);margin-bottom:14px;}
-.segment-row{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:8px;padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--border);}
-.seg-type{min-width:44px;text-align:center;}
-.seg-type-label{font-size:9px;font-weight:800;letter-spacing:1px;}
-.seg-time{font-size:10px;color:var(--text2);margin-top:2px;}
-
-/* LOGBOOK */
-.logbook-row{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:8px;padding:10px 14px;margin-bottom:7px;}
-
-/* PIREP FORM */
-.form-group{margin-bottom:16px;}
-.form-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text2);display:block;margin-bottom:6px;}
-.form-input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border .2s;}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text);}
+.btn-blue{background:rgba(74,155,184,.14);border:1px solid rgba(74,155,184,.3);color:var(--blue);}
+.btn-green{background:rgba(90,158,111,.14);border:1px solid rgba(90,158,111,.3);color:var(--green);}
+.btn-orange{background:rgba(196,122,58,.14);border:1px solid rgba(196,122,58,.3);color:var(--orange);}
+.form-lbl{display:block;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono);}
+.form-input{width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color var(--transition);}
 .form-input:focus{border-color:var(--gold);}
-textarea.form-input{resize:vertical;min-height:100px;}
-select.form-input{cursor:pointer;appearance:none;}
-
-/* NOTIFICATIONS */
-.notif-item{display:flex;gap:12px;align-items:flex-start;background:var(--card2);border-radius:8px;padding:12px 14px;margin-bottom:8px;border-left:3px solid var(--border);}
-.notif-item.unread{border-left-color:var(--gold);}
-.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);margin-top:4px;flex-shrink:0;}
-
-/* REX */
-.rex-card{background:var(--card);border-radius:10px;padding:14px 16px;border:1px solid var(--border);margin-bottom:10px;}
-
-/* MODAL */
-#modal-overlay{position:fixed;inset:0;background:#000000cc;z-index:1000;display:none;align-items:center;justify-content:center;padding:18px;}
-#modal-overlay.open{display:flex;}
-#modal{background:#0a0f1e;border:1.5px solid var(--border);border-radius:16px;width:100%;max-width:860px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;}
-.modal-header{background:var(--card);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
-.modal-tabs{display:flex;gap:1px;padding:8px 22px 0;border-bottom:1px solid var(--border);background:var(--card);overflow-x:auto;}
-.modal-tab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);padding:7px 13px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;}
-.modal-tab.active{color:var(--gold);border-bottom-color:var(--gold);background:#C8A96E22;}
-.modal-body{overflow-y:auto;padding:22px;flex:1;}
-.tab-content{display:none;}
-.tab-content.active{display:block;}
-
-#toast{position:fixed;top:18px;right:18px;z-index:2000;border-radius:9px;padding:11px 18px;font-size:12px;font-weight:600;display:none;}
-
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+textarea.form-input{resize:vertical;min-height:80px;}
+.seg-row{display:flex;align-items:center;gap:10px;background:var(--bg3);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:6px;border-left:3px solid var(--border);}
+.rot-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;}
+#range-map{height:400px;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
+#toast{position:fixed;top:20px;right:20px;z-index:3000;border-radius:var(--radius-sm);padding:10px 16px;font-size:12px;font-weight:600;display:none;box-shadow:var(--shadow);max-width:320px;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.mono{font-family:var(--font-mono);}
+.fw7{font-weight:700;}
+.text-gold{color:var(--gold);}
+.text-blue{color:var(--blue);}
+.text-green{color:var(--green);}
+.text-orange{color:var(--orange);}
+.text-muted{color:var(--text2);}
+.mb8{margin-bottom:8px;}.mb12{margin-bottom:12px;}.mb16{margin-bottom:16px;}.mb20{margin-bottom:20px;}.mt12{margin-top:12px;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
-.mono{font-family:'JetBrains Mono',monospace;}
 </style>
 </head>
 <body>
-
+<!-- SIDEBAR -->
 <div id="sidebar">
-  <div class="sidebar-logo">
-    <div class="airline">WEST ATLANTIC</div>
-    <div class="sname">Espace Pilote</div>
-    <div class="pilot-badge">
+  <div class="sb-header">
+    <div class="sb-logo">WABA</div>
+    <div class="sb-tag">Espace Pilote</div>
+    <div class="pilot-card">
       <div class="pilot-name" id="pilot-name">Chargement...</div>
       <div class="pilot-role" id="pilot-role">—</div>
-      <div class="pilot-msfs" id="pilot-msfs">—</div>
+      <div class="pilot-ratings" id="pilot-ratings"></div>
     </div>
   </div>
   <nav>
-    <div class="nav-item active" data-page="dashboard"><span>⬡</span> Tableau de bord</div>
-    <div class="nav-item" data-page="rotations"><span>✈</span> Mes rotations</div>
-    <div class="nav-item" data-page="available"><span>◇</span> Réservation vols</div>
-    <div class="nav-item" data-page="logbook"><span>📒</span> Carnet de route</div>
-    <div class="nav-item" data-page="pirep"><span>⚠</span> Soumettre PIREP</div>
-    <div class="nav-item" data-page="rex"><span>📋</span> REX & Sécurité</div>
-    <div class="nav-item" data-page="docs"><span>📁</span> Documents</div>
-    <div class="nav-item" data-page="notifications"><span>🔔</span> Notifications <span class="nav-badge" id="notif-badge" style="display:none">0</span></div>
+    <div class="nav-item active" data-page="dashboard"><span class="nav-icon">⬡</span>Tableau de bord</div>
+    <div class="nav-item" data-page="map"><span class="nav-icon">◎</span>Carte en direct</div>
+    <div class="nav-item" data-page="fleet"><span class="nav-icon">✈</span>Flotte</div>
+    <div class="nav-item" data-page="planning"><span class="nav-icon">▦</span>Planning & Réservation<span class="nav-badge" id="resa-badge" style="display:none">!</span></div>
+    <div class="nav-sec">Documentation</div>
+    <div class="nav-item" data-page="procedures"><span class="nav-icon">📋</span>Procédures opé.</div>
+    <div class="nav-sec">Compagnie</div>
+    <div class="nav-item" data-page="safety"><span class="nav-icon">◉</span>Sécurité des vols</div>
+    <div class="nav-item" data-page="logbook"><span class="nav-icon">📒</span>Carnet de route</div>
+    <div class="nav-item" data-page="notifications"><span class="nav-icon">🔔</span>Notifications<span class="nav-badge" id="notif-badge" style="display:none">0</span></div>
   </nav>
-  <div class="sidebar-footer">
-    <div style="color:var(--text2);margin-bottom:4px">West Atlantic Business Aviation</div>
-    <div>LFRS · Nantes</div>
-    <button class="btn-logout" onclick="logout()">← Déconnexion</button>
+  <div class="sb-footer">
+    <div class="theme-row" onclick="toggleTheme()">
+      <span class="theme-lbl" id="theme-lbl">MODE NUIT</span>
+      <div class="theme-sw"></div>
+    </div>
+    <button class="auth-btn" id="auth-btn" onclick="logout()"><span>←</span><span>Déconnexion</span></button>
+    <div id="admin-link-container"></div>
   </div>
 </div>
 
+<!-- MAIN -->
 <div id="main">
 
-  <!-- DASHBOARD -->
-  <div class="page active" id="page-dashboard">
-    <div class="page-title" id="dash-greeting">Bonjour !</div>
-    <div class="page-sub" id="dash-date">Semaine 24 · Juin 2026</div>
-    <div class="g3" style="margin-bottom:22px">
-      <div class="kpi"><div class="kpi-label">Vols effectués</div><div class="kpi-val" id="kpi-flights" style="color:var(--blue)">—</div><div class="kpi-sub">Total VA</div></div>
-      <div class="kpi"><div class="kpi-label">Heures de vol</div><div class="kpi-val" id="kpi-hours" style="color:var(--gold)">—</div><div class="kpi-sub">Total VA</div></div>
-      <div class="kpi"><div class="kpi-label">Prochain vol</div><div class="kpi-val" id="kpi-next" style="color:var(--green);font-size:18px">—</div><div class="kpi-sub" id="kpi-next-sub">—</div></div>
-    </div>
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="page-title" id="dash-greeting">Bonjour !</div>
+  <div class="page-sub">Semaine 24 · Juin 2026 · West Atlantic Business Aviation</div>
 
-    <!-- Prochaine rotation -->
-    <div class="stitle">Ma prochaine rotation</div>
-    <div id="next-rotation-dash">
-      <div class="card" style="text-align:center;padding:30px;color:var(--text2)">
-        <div style="font-size:28px;margin-bottom:10px">✈</div>
-        Aucune rotation assignée pour le moment.
-      </div>
-    </div>
-
-    <!-- Statut avion assigné -->
-    <div class="stitle" style="margin-top:22px">Statut de mon appareil</div>
-    <div id="aircraft-status-dash">
-      <div class="card" style="color:var(--text2);font-size:12px;padding:20px">Aucun appareil assigné.</div>
+  <!-- Mon vol du jour -->
+  <div class="sec-title mb8">Mon prochain vol</div>
+  <div id="my-next-flight" class="mb20">
+    <div class="card" style="text-align:center;padding:30px">
+      <div style="font-size:32px;margin-bottom:12px;opacity:.3">✈</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Aucune rotation réservée</div>
+      <button class="btn btn-gold" onclick="showPage('planning')">Réserver une rotation →</button>
     </div>
   </div>
 
-  <!-- ROTATIONS -->
-  <div class="page" id="page-rotations">
-    <div class="page-title">Mes rotations</div>
-    <div class="page-sub">Semaine 24 · 9–15 Juin 2026</div>
-    <div id="rotations-list">
-      <div class="card" style="text-align:center;padding:30px;color:var(--text2)">
-        <div style="font-size:28px;margin-bottom:10px">📅</div>
-        Aucune rotation assignée pour cette semaine.
-      </div>
-    </div>
+  <!-- KPIs perso -->
+  <div class="sec-title mb8">Mes statistiques</div>
+  <div class="g4 mb20">
+    <div class="kpi"><div class="kpi-lbl">Vols effectués</div><div class="kpi-val text-blue" id="kpi-flights">0</div><div class="kpi-sub">Total VA</div></div>
+    <div class="kpi"><div class="kpi-lbl">Heures de vol</div><div class="kpi-val text-gold" id="kpi-hours">0h00</div><div class="kpi-sub">Total VA</div></div>
+    <div class="kpi"><div class="kpi-lbl">NM parcourus</div><div class="kpi-val text-green" id="kpi-nm">0</div><div class="kpi-sub">Total VA</div></div>
+    <div class="kpi"><div class="kpi-lbl">Destinations</div><div class="kpi-val" id="kpi-dest">0</div><div class="kpi-sub">Aéroports visités</div></div>
   </div>
 
-  <!-- LOGBOOK -->
-  <div class="page" id="page-logbook">
-    <div class="page-title">Carnet de route</div>
-    <div class="page-sub">Historique de vos vols dans la VA</div>
-    <div class="card" style="margin-bottom:16px">
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center">
-        <div><div style="font-size:10px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Vols total</div><div class="mono" style="font-size:24px;color:var(--blue)" id="lb-flights">0</div></div>
-        <div><div style="font-size:10px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Heures</div><div class="mono" style="font-size:24px;color:var(--gold)" id="lb-hours">0h00</div></div>
-        <div><div style="font-size:10px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">NM parcourus</div><div class="mono" style="font-size:24px;color:var(--green)" id="lb-nm">0</div></div>
-        <div><div style="font-size:10px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Destinations</div><div class="mono" style="font-size:24px;color:var(--text)" id="lb-dest">0</div></div>
-      </div>
-    </div>
-    <div id="logbook-list">
-      <div class="card" style="text-align:center;padding:30px;color:var(--text2)">Aucun vol enregistré pour le moment.</div>
-    </div>
+  <!-- Mes options en cours -->
+  <div id="my-options-dash" style="display:none">
+    <div class="sec-title mb8">Mes options en cours</div>
+    <div id="options-list-dash" class="mb20"></div>
+  </div>
+</div>
+
+<!-- CARTE -->
+<div class="page" id="page-map">
+  <div class="page-title">Carte en direct</div>
+  <div class="page-sub">Positions flotte · Temps réel</div>
+  <div id="range-map" class="mb16"></div>
+  <div class="g3" id="map-fleet-list"></div>
+</div>
+
+<!-- FLOTTE -->
+<div class="page" id="page-fleet">
+  <div class="page-title">Flotte West Atlantic</div>
+  <div class="page-sub">Statut et caractéristiques des appareils</div>
+  <div class="g3" id="fleet-list"></div>
+</div>
+
+<!-- PLANNING & RÉSERVATION -->
+<div class="page" id="page-planning">
+  <div class="page-title">Planning & Réservation</div>
+  <div class="page-sub">Semaine 24 · Options et réservations de vols</div>
+
+  <!-- Mes réservations actives -->
+  <div id="my-reservations-section" style="display:none">
+    <div class="sec-title mb8">Mes rotations confirmées</div>
+    <div id="my-reservations-list" class="mb20"></div>
   </div>
 
-  <!-- PIREP -->
-  <div class="page" id="page-pirep">
-    <div class="page-title">Soumettre un PIREP</div>
-    <div class="page-sub">Rapport de compte-rendu de vol · Tout incident doit être signalé</div>
-    <div class="card" style="max-width:640px">
-      <div class="form-group">
-        <label class="form-label">Type de rapport</label>
-        <select class="form-input" id="pirep-type">
-          <option value="OBSERVATION">Observation</option>
-          <option value="ANOMALIE_TECHNIQUE">Anomalie technique</option>
-          <option value="INCIDENT">Incident</option>
-          <option value="INCIDENT_SERIEUX">Incident sérieux</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Niveau de sévérité</label>
-        <select class="form-input" id="pirep-severity">
-          <option value="LOW">Faible — Aucun impact sécurité</option>
-          <option value="MEDIUM">Modéré — Impact limité</option>
-          <option value="HIGH">Élevé — Impact significatif</option>
-          <option value="CRITICAL">Critique — Sécurité compromise</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Vol concerné (optionnel)</label>
-        <select class="form-input" id="pirep-flight">
-          <option value="">— Sélectionner un vol —</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Description de l'événement</label>
-        <textarea class="form-input" id="pirep-desc" placeholder="Décrivez l'événement avec précision : phase de vol, conditions météo, actions entreprises..."></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Actions immédiates entreprises</label>
-        <textarea class="form-input" id="pirep-actions" placeholder="Quelles actions avez-vous prises sur le moment ?"></textarea>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-        <input type="checkbox" id="pirep-anon" style="width:16px;height:16px;cursor:pointer"/>
-        <label for="pirep-anon" style="font-size:12px;color:var(--text2);cursor:pointer">Soumettre de manière anonyme</label>
-      </div>
-      <button class="btn btn-gold" onclick="submitPirep()" style="padding:12px 28px;font-size:13px">Soumettre le PIREP</button>
-    </div>
+  <!-- Filtres -->
+  <div class="sec-title mb8">Rotations disponibles</div>
+  <div style="background:rgba(184,151,62,.08);border:1px solid rgba(184,151,62,.2);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:14px;font-size:11px;color:var(--text2);line-height:1.7">
+    ☆ <strong style="color:var(--text)">Option</strong> = je suis intéressé, sans engagement · 
+    ✓ <strong style="color:var(--text)">Réserver</strong> = engagement ferme · 
+    ⏱ <strong style="color:var(--orange)">24h</strong> pour effectuer le vol après réservation
   </div>
-
-  <!-- ESPACE RÉSERVATION -->
-  <div class="page" id="page-available">
-    <div class="page-title">Espace Réservation</div>
-    <div class="page-sub">Semaine 24 · Options et confirmations de vol</div>
-
-    <!-- Légende -->
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
-      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)">
-        <div style="width:10px;height:10px;border-radius:2px;background:rgba(74,155,184,.3);border:1px solid var(--blue)"></div>Option posée
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)">
-        <div style="width:10px;height:10px;border-radius:2px;background:rgba(184,151,62,.3);border:1px solid var(--gold)"></div>Confirmée (moi)
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)">
-        <div style="width:10px;height:10px;border-radius:2px;background:rgba(90,158,111,.3);border:1px solid var(--green)"></div>Prise par un autre pilote
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)">
-        <div style="width:10px;height:10px;border-radius:2px;background:#1a1a1a;border:1px solid #333"></div>🤖 Équipage virtuel
-      </div>
-    </div>
-
-    <!-- Filtres -->
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      <button onclick="filterAvail('all')" id="filter-all" class="btn btn-gold" style="font-size:10px;padding:5px 12px">Toutes</button>
-      <button onclick="filterAvail('available')" id="filter-available" class="btn btn-ghost" style="font-size:10px;padding:5px 12px">Disponibles</button>
-      <button onclick="filterAvail('mine')" id="filter-mine" class="btn btn-ghost" style="font-size:10px;padding:5px 12px">Mes options/réservations</button>
-    </div>
-
-    <div id="available-list">
-      <div class="card" style="text-align:center;padding:30px;color:var(--text2)">Chargement...</div>
-    </div>
+  <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+    <button onclick="setFilter('all')" id="f-all" class="btn btn-gold" style="font-size:10px;padding:5px 12px">Toutes</button>
+    <button onclick="setFilter('available')" id="f-available" class="btn btn-ghost" style="font-size:10px;padding:5px 12px">Disponibles</button>
+    <button onclick="setFilter('mine')" id="f-mine" class="btn btn-ghost" style="font-size:10px;padding:5px 12px">Mes options & réservations</button>
   </div>
-
-  <!-- REX -->
-  <div class="page" id="page-rex">
-    <div class="page-title">REX & Retour d'expérience</div>
-    <div class="page-sub">Rapports validés par l'Officier Sécurité des Vols</div>
-    <div id="rex-list">
-      <div class="card" style="text-align:center;padding:30px;color:var(--text2)">Aucun REX publié pour le moment.</div>
-    </div>
+  <div id="rotations-list">
+    <div class="card" style="text-align:center;padding:30px;color:var(--text2)">Chargement...</div>
   </div>
+</div>
 
-  <!-- DOCUMENTS -->
-  <div class="page" id="page-docs">
-    <div class="page-title">Documents & Checklists</div>
-    <div class="page-sub">Documents téléchargeables par appareil</div>
-    <div style="display:flex;flex-direction:column;gap:16px">
-      ${['F-EVOK — Citation X','F-EXZA — Citation Longitude','F-LIMB — Boeing BBJ2'].map((ac,i)=>`
-      <div class="card">
-        <div class="stitle">${ac}</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-          ${['Normal Checklist','Emergency Checklist','QRH','Performance Charts','MEL','Weight & Balance'].map(doc=>`
-          <div style="background:var(--card2);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center">
-            <div style="font-size:12px;color:var(--text)">${doc}</div>
-            <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="showToast('Document bientôt disponible')">↓</button>
-          </div>`).join('')}
-        </div>
+<!-- PROCÉDURES -->
+<div class="page" id="page-procedures">
+  <div class="page-title">Procédures opérationnelles</div>
+  <div class="page-sub">SOPs · Checklists · Réglementation</div>
+  <div class="g3 mb20">
+    ${['F-EVOK — Citation X','F-EXZA — Citation Longitude','F-LIMB — Boeing BBJ2'].map((ac,i)=>`
+    <div class="card">
+      <div class="sec-title mb8">${ac}</div>
+      ${['Normal Checklist','Emergency Checklist','QRH','Performance Charts','MEL','Weight & Balance'].map(doc=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:12px">${doc}</div>
+        <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px">↓ PDF</button>
+      </div>`).join('')}
+    </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="sec-title mb8">Réglementation applicable</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${[['EASA Part-NCC','Exploitation non commerciale d\'aéronefs complexes','EU 965/2012'],['EU OPS','Règlement opérations aériennes européen','EU 2021/1296'],['SERA','Règles de l\'air européennes','EU 923/2012'],['Part-MED','Certificats médicaux pilotes','EU 1178/2011']].map(([t,d,r])=>`
+      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:12px;font-weight:600">${t}</div><div style="font-size:10px;color:var(--text2)">${d}</div></div>
+        <div class="mono" style="font-size:10px;color:var(--text2)">${r}</div>
       </div>`).join('')}
     </div>
   </div>
-
-  <!-- NOTIFICATIONS -->
-  <div class="page" id="page-notifications">
-    <div class="page-title">Notifications</div>
-    <div class="page-sub">Vos alertes et messages de la compagnie</div>
-    <div id="notif-list">
-      <div class="card" style="text-align:center;padding:30px;color:var(--text2)">Aucune notification.</div>
-    </div>
-  </div>
-
 </div>
 
-<!-- MODAL BRIEFING -->
-<div id="modal-overlay">
-  <div id="modal">
-    <div class="modal-header">
-      <div>
-        <div style="display:flex;align-items:center;gap:11px">
-          <div class="mono" style="font-size:20px;font-weight:900;color:var(--gold);letter-spacing:2px" id="modal-flightno">—</div>
-          <div style="font-size:15px;color:var(--text);font-weight:700" id="modal-route">—</div>
-          <div id="modal-ferry-badge" style="display:none;background:#7EB8D422;border:1px solid var(--blue);border-radius:5px;padding:2px 9px;font-size:10px;font-weight:800;color:var(--blue)">FERRY</div>
-        </div>
-        <div style="font-size:11px;color:var(--text2);margin-top:3px" id="modal-sub">—</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-gold" id="simbrief-btn" onclick="loadSimBrief()" style="font-size:11px">📡 SimBrief</button>
-        <button class="btn btn-green" onclick="markFlightComplete()" style="font-size:11px">✓ Vol effectué</button>
-        <button class="btn btn-ghost" onclick="closeModal()" style="font-size:11px">✕</button>
+<!-- SÉCURITÉ DES VOLS -->
+<div class="page" id="page-safety">
+  <div class="page-title">Sécurité des vols</div>
+  <div class="page-sub">REX · Faits marquants · Communications OSV</div>
+
+  <div class="sec-title mb8">Derniers REX publiés</div>
+  <div id="rex-list" class="mb20">
+    <div class="card" style="text-align:center;padding:24px;color:var(--text2)">Aucun REX publié pour le moment.</div>
+  </div>
+
+  <div class="sec-title mb8">Soumettre un PIREP</div>
+  <div class="card" style="max-width:600px">
+    <div style="margin-bottom:14px">
+      <label class="form-lbl">Type de rapport</label>
+      <select class="form-input" id="pirep-type">
+        <option value="OBSERVATION">Observation</option>
+        <option value="ANOMALIE_TECHNIQUE">Anomalie technique</option>
+        <option value="INCIDENT">Incident</option>
+        <option value="INCIDENT_SERIEUX">Incident sérieux</option>
+      </select>
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="form-lbl">Sévérité</label>
+      <select class="form-input" id="pirep-severity">
+        <option value="LOW">Faible</option>
+        <option value="MEDIUM">Modérée</option>
+        <option value="HIGH">Élevée</option>
+        <option value="CRITICAL">Critique</option>
+      </select>
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="form-lbl">Description</label>
+      <textarea class="form-input" id="pirep-desc" placeholder="Décrivez l'événement avec précision..."></textarea>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <input type="checkbox" id="pirep-anon" style="width:16px;height:16px;cursor:pointer"/>
+      <label for="pirep-anon" style="font-size:12px;color:var(--text2);cursor:pointer">Soumettre anonymement</label>
+    </div>
+    <button class="btn btn-gold" onclick="submitPirep()" style="font-size:13px;padding:10px 24px">Soumettre le PIREP</button>
+  </div>
+</div>
+
+<!-- CARNET DE ROUTE -->
+<div class="page" id="page-logbook">
+  <div class="page-title">Carnet de route</div>
+  <div class="page-sub">Historique de vos vols dans la VA</div>
+  <div class="card mb16">
+    <div class="g4" style="text-align:center">
+      <div><div class="kpi-lbl">Vols</div><div class="mono fw7" style="font-size:24px;color:var(--blue)" id="lb-flights">0</div></div>
+      <div><div class="kpi-lbl">Heures</div><div class="mono fw7" style="font-size:24px;color:var(--gold)" id="lb-hours">0h00</div></div>
+      <div><div class="kpi-lbl">NM</div><div class="mono fw7" style="font-size:24px;color:var(--green)" id="lb-nm">0</div></div>
+      <div><div class="kpi-lbl">Destinations</div><div class="mono fw7" style="font-size:24px" id="lb-dest">0</div></div>
+    </div>
+  </div>
+  <div id="logbook-list">
+    <div class="card" style="text-align:center;padding:24px;color:var(--text2)">Aucun vol enregistré.</div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div class="page" id="page-notifications">
+  <div class="page-title">Notifications</div>
+  <div class="page-sub">Messages et alertes de la compagnie</div>
+  <div id="notif-list">
+    <div class="card" style="text-align:center;padding:24px;color:var(--text2)">Aucune notification.</div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- MODAL RÉSERVATION -->
+<div id="resa-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);z-index:2000;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;padding:28px;margin:auto;">
+    <div style="font-family:var(--font-display);font-size:20px;font-weight:700;margin-bottom:4px" id="resa-title">Confirmer la réservation</div>
+    <div style="font-size:11px;color:var(--text2);font-family:var(--font-mono);margin-bottom:20px" id="resa-sub">—</div>
+    <div id="resa-segments" style="margin-bottom:18px"></div>
+
+    <!-- MEP -->
+    <div id="resa-mep-block" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:800;color:var(--blue);margin-bottom:8px;letter-spacing:1px;font-family:var(--font-mono)">↑ MISE EN PLACE</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Ce segment positionne l'appareil avant votre vol commercial.</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="setMepChoice('do')" id="mep-do" class="btn btn-blue" style="flex:1">✈ Je fais la MEP</button>
+        <button onclick="setMepChoice('skip')" id="mep-skip" class="btn btn-ghost" style="flex:1">🤖 Équipage virtuel</button>
       </div>
     </div>
-    <div class="modal-tabs">
-      <button class="modal-tab active" onclick="switchTab('general')">Général</button>
-      <button class="modal-tab" onclick="switchTab('simbrief')">SimBrief OFP</button>
-      <button class="modal-tab" onclick="switchTab('wx')">Météo</button>
-      <button class="modal-tab" onclick="switchTab('notam')">NOTAM</button>
-      <button class="modal-tab" onclick="switchTab('fuel')">Carburant</button>
-      <button class="modal-tab" onclick="switchTab('handling')">Handling</button>
+
+    <!-- Heure PAX -->
+    <div style="background:var(--bg3);border:1px solid var(--gold);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:800;color:var(--gold);margin-bottom:8px;letter-spacing:1px;font-family:var(--font-mono)">✈ VOL COMMERCIAL — HEURE DE DÉPART UTC</div>
+      <input type="time" id="resa-time" style="width:100%;background:var(--input-bg);border:1px solid var(--gold);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text);font-family:var(--font-mono);font-size:18px;outline:none;color-scheme:dark;margin-bottom:8px"/>
+      <div style="font-size:10px;color:var(--text2)">⚠ Heure en UTC · <strong style="color:var(--orange)">24h</strong> pour effectuer le vol après confirmation · sinon annulation automatique</div>
     </div>
-    <div class="modal-body">
-      <div class="tab-content active" id="tab-general"></div>
-      <div class="tab-content" id="tab-simbrief"><div style="text-align:center;padding:30px;color:var(--text2)">Cliquez sur "SimBrief" pour charger le plan de vol</div></div>
-      <div class="tab-content" id="tab-wx"></div>
-      <div class="tab-content" id="tab-notam"></div>
-      <div class="tab-content" id="tab-fuel"></div>
-      <div class="tab-content" id="tab-handling">
-        <div style="background:#7EB8D411;border:1px solid #7EB8D433;border-radius:9px;padding:16px;margin-bottom:16px;font-size:12px;color:var(--blue)">
-          📡 Les informations de handling seront disponibles dans une prochaine mise à jour — FBO assigné, parking, services commandés.
-        </div>
+
+    <!-- RTB -->
+    <div id="resa-rtb-block" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:20px">
+      <div style="font-size:10px;font-weight:800;color:var(--blue);margin-bottom:8px;letter-spacing:1px;font-family:var(--font-mono)">↓ RETOUR BASE</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Ce segment ramène l'appareil à sa base après le vol commercial.</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="setRtbChoice('do')" id="rtb-do" class="btn btn-blue" style="flex:1">✈ Je fais le RTB</button>
+        <button onclick="setRtbChoice('skip')" id="rtb-skip" class="btn btn-ghost" style="flex:1">🤖 Équipage virtuel</button>
       </div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button onclick="confirmReservation()" class="btn btn-gold" style="flex:1;font-size:13px;padding:12px">✓ Confirmer</button>
+      <button onclick="closeResa()" class="btn btn-ghost" style="padding:12px 18px;font-size:13px">Annuler</button>
     </div>
   </div>
 </div>
 
 <div id="toast"></div>
-
-<!-- MODAL RÉSERVATION -->
-<div id="resa-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
-  <div style="background:#0a0f1e;border:1px solid #1e2a3a;border-radius:14px;width:100%;max-width:520px;padding:28px;margin:auto;">
-    
-    <!-- Header -->
-    <div style="margin-bottom:20px">
-      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:4px" id="resa-title">Confirmer la réservation</div>
-      <div style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace" id="resa-sub">—</div>
-    </div>
-
-    <!-- Segments -->
-    <div id="resa-segments" style="margin-bottom:20px"></div>
-
-    <!-- MEP Skip -->
-    <div id="resa-mep-block" style="display:none;background:#0e0e12;border:1px solid #252530;border-radius:8px;padding:14px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:800;color:var(--blue);margin-bottom:10px;letter-spacing:1px;font-family:'JetBrains Mono',monospace">↑ MISE EN PLACE</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Ce vol positionne l'appareil avant votre vol commercial.</div>
-      <div style="display:flex;gap:8px">
-        <button onclick="setMepChoice('do')" id="mep-do" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--blue);background:rgba(74,155,184,.15);color:var(--blue);cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;font-weight:600">✈ Je fais la MEP</button>
-        <button onclick="setMepChoice('skip')" id="mep-skip" style="flex:1;padding:8px;border-radius:6px;border:1px solid #252530;background:transparent;color:var(--text2);cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif">🤖 Équipage virtuel</button>
-      </div>
-    </div>
-
-    <!-- Heure départ vol PAX -->
-    <div style="background:#0e0e12;border:1px solid var(--gold);border-radius:8px;padding:14px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:800;color:var(--gold);margin-bottom:10px;letter-spacing:1px;font-family:'JetBrains Mono',monospace">✈ VOL COMMERCIAL — HEURE DE DÉPART UTC</div>
-      <input type="time" id="resa-time" style="width:100%;background:#080808;border:1px solid #B8973E;border-radius:6px;padding:10px 14px;color:#e8e6e0;font-family:'JetBrains Mono',monospace;font-size:18px;outline:none;color-scheme:dark;margin-bottom:8px"/>
-      <div style="font-size:10px;color:var(--text2)">⚠ Heure en UTC · Vous avez <strong style="color:var(--gold)">24h</strong> pour effectuer ce vol après confirmation</div>
-    </div>
-
-    <!-- RTB Skip -->
-    <div id="resa-rtb-block" style="display:none;background:#0e0e12;border:1px solid #252530;border-radius:8px;padding:14px;margin-bottom:20px">
-      <div style="font-size:10px;font-weight:800;color:var(--blue);margin-bottom:10px;letter-spacing:1px;font-family:'JetBrains Mono',monospace">↓ RETOUR BASE</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Ce vol ramène l'appareil à sa base après le vol commercial.</div>
-      <div style="display:flex;gap:8px">
-        <button onclick="setRtbChoice('do')" id="rtb-do" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--blue);background:rgba(74,155,184,.15);color:var(--blue);cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;font-weight:600">✈ Je fais le RTB</button>
-        <button onclick="setRtbChoice('skip')" id="rtb-skip" style="flex:1;padding:8px;border-radius:6px;border:1px solid #252530;background:transparent;color:var(--text2);cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif">🤖 Équipage virtuel</button>
-      </div>
-    </div>
-
-    <!-- Actions -->
-    <div style="display:flex;gap:10px">
-      <button onclick="confirmReservation()" style="flex:1;background:#B8973E;border:none;color:#000;border-radius:7px;padding:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif">✓ Confirmer</button>
-      <button onclick="closeResa()" style="background:transparent;border:1px solid #252530;color:#7A7880;border-radius:7px;padding:12px 18px;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif">Annuler</button>
-    </div>
-  </div>
-</div>
-
 <script>
-const SUPABASE_URL='https://ncawfnwgihmebztfrekg.supabase.co';
-const SUPABASE_KEY='sb_publishable_cF4czohNpkG2Nb4nYz45Ug_4JglChlU';
-const SIMBRIEF_PILOT_ID='553724';
+// ═══════════════════════════════
+// CONFIG
+// ═══════════════════════════════
+const SUPA_URL='https://ncawfnwgihmebztfrekg.supabase.co';
+const SUPA_KEY='sb_publishable_cF4czohNpkG2Nb4nYz45Ug_4JglChlU';
+const WEEK='2026-06-09';
 const {createClient}=supabase;
-const db=createClient(SUPABASE_URL,SUPABASE_KEY);
-const WEEK_START='2026-06-09';
+const db=createClient(SUPA_URL,SUPA_KEY);
 
-let currentUser=null, currentPilot=null, currentFlight=null;
-let myFlights=[], myLogbook=[], notifications=[], rexList=[];
+let currentUser=null,currentPilot=null;
+let allFlights=[],myFlights=[],myLogbook=[],notifications=[],myOptions=[];
+let allOptions=[],fleet=[],rexList=[];
+let currentResa=null,resaMepChoice='do',resaRtbChoice='do';
+let currentFilter='all';
+let leafletMap=null,acMarkers={};
 
-const AC_PERF={
-  'F-EVOK':{fuel_capacity_kg:6800,fuel_flow_kg_h:900,taxi_fuel_kg:80,climb_fuel_kg:300,descent_fuel_kg:120,reserve_min:45,alternate_fuel_kg:600},
-  'F-EXZA':{fuel_capacity_kg:5800,fuel_flow_kg_h:700,taxi_fuel_kg:70,climb_fuel_kg:240,descent_fuel_kg:100,reserve_min:45,alternate_fuel_kg:500},
-  'F-LIMB':{fuel_capacity_kg:26000,fuel_flow_kg_h:4500,taxi_fuel_kg:300,climb_fuel_kg:1800,descent_fuel_kg:600,reserve_min:45,alternate_fuel_kg:2200},
+const AC_COLORS={'F-EVOK':'#B8973E','F-EXZA':'#4A9BB8','F-LIMB':'#5A9E6F'};
+const AP={
+  LFRS:{lat:47.1569,lon:-1.6078},LFRZ:{lat:47.3122,lon:-2.1564},LFRU:{lat:48.6032,lon:-3.8158},
+  LFPB:{lat:48.9694,lon:2.4414},EGLF:{lat:51.2778,lon:-0.7764},LSZH:{lat:47.4647,lon:8.5492},
+  LSGG:{lat:46.2381,lon:6.1089},LEMD:{lat:40.4936,lon:-3.5668},LIRA:{lat:41.7994,lon:12.5949},
+  OMDB:{lat:25.2532,lon:55.3657},KTEB:{lat:40.8501,lon:-74.0608},
 };
 
-function calcFuel(acId,dist_nm,cruise_kt){
-  const p=AC_PERF[acId];if(!p)return null;
-  const trip_time_h=dist_nm/cruise_kt;
-  const trip_fuel=Math.round(p.fuel_flow_kg_h*trip_time_h);
-  const reserve=Math.round(p.fuel_flow_kg_h*(p.reserve_min/60));
-  const cont=Math.round(trip_fuel*0.05);
-  const total=trip_fuel+p.climb_fuel_kg+p.descent_fuel_kg+reserve+p.alternate_fuel_kg+cont+p.taxi_fuel_kg;
-  return{trip_fuel,climb:p.climb_fuel_kg,descent:p.descent_fuel_kg,reserve,alternate:p.alternate_fuel_kg,cont,taxi:p.taxi_fuel_kg,total,feasible:total<=p.fuel_capacity_kg,capacity:p.fuel_capacity_kg};
-}
+// ═══════════════════════════════
+// UTILS
+// ═══════════════════════════════
+function showToast(msg,type='ok'){const t=document.getElementById('toast'),c=type==='err'?'var(--orange)':'var(--green)';t.style.cssText=`display:block;background:var(--bg3);border:1px solid ${c};color:${c}`;t.textContent=msg;setTimeout(()=>t.style.display='none',3500);}
+function parseDur(d){if(!d)return 0;const m=d.match(/(\d+)h(\d+)/);return m?parseInt(m[1])*60+parseInt(m[2]):0;}
+function fmtMin(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
 
-function showToast(msg,type='ok'){
-  const t=document.getElementById('toast'),c=type==='err'?'#E8A87C':'#A8D5A2';
-  t.style.cssText=`display:block;background:${c}22;border:1px solid ${c};color:${c}`;
-  t.textContent=msg;setTimeout(()=>t.style.display='none',3500);
-}
+// ═══════════════════════════════
+// THEME
+// ═══════════════════════════════
+function toggleTheme(){const h=document.documentElement,d=h.getAttribute('data-theme')==='dark';h.setAttribute('data-theme',d?'light':'dark');document.getElementById('theme-lbl').textContent=d?'MODE JOUR':'MODE NUIT';localStorage.setItem('waba-theme',d?'light':'dark');}
+(function(){const t=localStorage.getItem('waba-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
 
-// ── AUTH ──
-async function init(){
-  const{data:{session}}=await db.auth.getSession();
-  if(!session){window.location.href='login.html';return;}
-  currentUser=session.user;
-
-  // Récupérer le profil pilote
-  const{data:pilot}=await db.from('pilots').select('*').eq('user_id',currentUser.id).single();
-  if(!pilot){
-    alert('Profil pilote non trouvé. Contactez l\'administration.');
-    await db.auth.signOut();
-    window.location.href='login.html';
-    return;
-  }
-  currentPilot=pilot;
-
-  // Vérifier le rôle — Admin/Dispatch → rediriger vers intranet complet
-  if(pilot.role==='ADMIN'||pilot.role==='DISPATCH'){
-    window.location.href='waba-ops-v3.html';
-    return;
-  }
-
-  // Afficher les infos pilote
-  document.getElementById('pilot-name').textContent=pilot.name||'Pilote';
-  document.getElementById('pilot-role').textContent=pilot.role||'PILOTE';
-  document.getElementById('pilot-msfs').textContent=pilot.msfs_pseudo||'—';
-  document.getElementById('dash-greeting').textContent=`Bonjour, ${pilot.name?.split(' ')[0]||'Pilote'} !`;
-
-  await loadMyData();
-}
-
-async function logout(){
-  await db.auth.signOut();
-  window.location.href='login.html';
-}
-
-// ── LOAD DATA ──
-async function loadMyData(){
-  // Mes vols assignés
-  const{data:flights}=await db.from('flights').select('*')
-    .or(`captain_id.eq.${currentPilot.id},fo_id.eq.${currentPilot.id}`)
-    .eq('week_start',WEEK_START)
-    .order('scheduled_date').order('dep_time');
-  myFlights=flights||[];
-
-  // Mon carnet de route
-  const{data:logbook}=await db.from('logbook').select('*')
-    .eq('pilot_id',currentPilot.id)
-    .order('date',{ascending:false});
-  myLogbook=logbook||[];
-
-  // Notifications
-  const{data:notifs}=await db.from('notifications').select('*')
-    .eq('pilot_id',currentPilot.id)
-    .order('created_at',{ascending:false});
-  notifications=notifs||[];
-
-  // REX publiés
-  const{data:rex}=await db.from('pireps').select('*')
-    .eq('status','CLOTURE')
-    .order('created_at',{ascending:false});
-  rexList=rex||[];
-
-  // Remplir le select des vols pour le PIREP
-  const sel=document.getElementById('pirep-flight');
-  myFlights.forEach(f=>{
-    const opt=document.createElement('option');
-    opt.value=f.id;
-    opt.textContent=`${f.flight_no} — ${f.origin}→${f.destination} (${f.scheduled_date})`;
-    sel.appendChild(opt);
-  });
-
-  renderDashboard();
-  renderRotations();
-  renderLogbook();
-  renderNotifications();
-  renderRex();
-}
-
-// ── DASHBOARD ──
-function renderDashboard(){
-  const completed=myLogbook.length;
-  const totalMin=myLogbook.reduce((a,l)=>a+(l.duration_min||0),0);
-  const totalH=Math.floor(totalMin/60), totalM=totalMin%60;
-  const nextFlight=myFlights.find(f=>f.status==='SCHEDULED'&&!f.is_ferry);
-
-  document.getElementById('kpi-flights').textContent=completed;
-  document.getElementById('kpi-hours').textContent=`${totalH}h${String(totalM).padStart(2,'0')}`;
-
-  if(nextFlight){
-    document.getElementById('kpi-next').textContent=`${nextFlight.origin}→${nextFlight.destination}`;
-    document.getElementById('kpi-next-sub').textContent=`${nextFlight.scheduled_date} · ${nextFlight.dep_time}`;
-  } else {
-    document.getElementById('kpi-next').textContent='—';
-    document.getElementById('kpi-next-sub').textContent='Aucun vol planifié';
-  }
-
-  // Notifications badge
-  const unread=notifications.filter(n=>!n.read).length;
-  const badge=document.getElementById('notif-badge');
-  if(unread>0){badge.textContent=unread;badge.style.display='flex';}
-  else badge.style.display='none';
-
-  // Prochaine rotation
-  if(myFlights.length>0){
-    const rotation=groupByRotation(myFlights)[0];
-    if(rotation){
-      document.getElementById('next-rotation-dash').innerHTML=renderRotationCard(rotation,true);
-    }
-  }
-}
-
-// ── ROTATIONS ──
-function groupByRotation(flights){
-  const rotations={};
-  flights.forEach(f=>{
-    const rid=f.rotation_id||f.id;
-    if(!rotations[rid]) rotations[rid]=[];
-    rotations[rid].push(f);
-  });
-  Object.values(rotations).forEach(r=>r.sort((a,b)=>(a.sequence||0)-(b.sequence||0)));
-  return Object.values(rotations).sort((a,b)=>{
-    const af=a[0],bf=b[0];
-    return(af.scheduled_date+af.dep_time).localeCompare(bf.scheduled_date+bf.dep_time);
-  });
-}
-
-function renderRotationCard(rotation, compact=false){
-  const mainFlight=rotation.find(f=>!f.is_ferry)||rotation[0];
-  const acColor={'F-EVOK':'#C8A96E','F-EXZA':'#7EB8D4','F-LIMB':'#A8D5A2'}[mainFlight?.aircraft_id]||'#C8A96E';
-
-  return`<div class="rotation-card" style="border-color:${acColor}33">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="mono" style="font-size:15px;font-weight:800;color:${acColor}">${mainFlight?.aircraft_id||'—'}</div>
-        <div>
-          <div style="font-size:13px;color:var(--text);font-weight:700">${mainFlight?.origin||'—'} → ${mainFlight?.destination||'—'}</div>
-          <div style="font-size:11px;color:var(--text2)">${mainFlight?.scheduled_date||''} · ${rotation.length} segment(s)</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px">
-        <span style="background:${acColor}22;color:${acColor};border:1px solid ${acColor}44;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700">${mainFlight?.aircraft_id||'—'}</span>
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:7px">
-      ${rotation.map(f=>{
-        const isFerry=f.is_ferry;
-        const segColor=isFerry?'var(--blue)':'var(--green)';
-        const segLabel=f.sequence===1?'↑ MEP':f.sequence===3?'↓ RTB':'✈ PAX';
-        const isDone=f.status==='COMPLETED'||f.status==='SKIPPED';
-        return`<div class="segment-row" style="border-left-color:${segColor};opacity:${isDone?'.5':'1'}">
-          <div class="seg-type">
-            <div class="seg-type-label" style="color:${segColor}">${segLabel}</div>
-            <div class="seg-time">${f.dep_time||''}</div>
-          </div>
-          <div style="width:1px;height:32px;background:var(--border)"></div>
-          <div style="flex:1">
-            <div style="font-size:12px;color:var(--text);font-weight:600">${f.origin} → ${f.destination}</div>
-            <div style="font-size:10px;color:var(--text2)">${f.distance_nm||0} NM · ${f.duration||'—'}${f.pax_count>0?` · ${f.pax_count} PAX`:''}</div>
-          </div>
-          <div style="display:flex;gap:5px">
-            ${isDone
-              ?`<span style="font-size:10px;color:var(--green)">✓ ${f.status==='SKIPPED'?'Skippé':'Effectué'}</span>`
-              :`<button class="btn btn-blue" style="font-size:10px;padding:4px 9px" onclick="openBriefing('${f.id}')">📋 Briefing</button>
-               ${isFerry?`<button class="btn btn-ghost" style="font-size:10px;padding:4px 9px" onclick="skipSegment('${f.id}')">⏭ Skip</button>`:''}
-               <button class="btn btn-green" style="font-size:10px;padding:4px 9px" onclick="markComplete('${f.id}')">✓</button>`
-            }
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
-  </div>`;
-}
-
-function renderRotations(){
-  const el=document.getElementById('rotations-list');
-  if(!myFlights.length){
-    el.innerHTML=`<div class="card" style="text-align:center;padding:30px;color:var(--text2)"><div style="font-size:28px;margin-bottom:10px">📅</div>Aucune rotation assignée pour cette semaine.</div>`;
-    return;
-  }
-  const rotations=groupByRotation(myFlights);
-  el.innerHTML=rotations.map(r=>renderRotationCard(r)).join('');
-}
-
-// ── LOGBOOK ──
-function renderLogbook(){
-  const totalMin=myLogbook.reduce((a,l)=>a+(l.duration_min||0),0);
-  const totalH=Math.floor(totalMin/60),totalM=totalMin%60;
-  const totalNM=myLogbook.reduce((a,l)=>a+(l.distance_nm||0),0);
-  const dests=new Set(myLogbook.map(l=>l.destination)).size;
-
-  document.getElementById('lb-flights').textContent=myLogbook.length;
-  document.getElementById('lb-hours').textContent=`${totalH}h${String(totalM).padStart(2,'0')}`;
-  document.getElementById('lb-nm').textContent=totalNM.toLocaleString('fr-FR');
-  document.getElementById('lb-dest').textContent=dests;
-
-  const el=document.getElementById('logbook-list');
-  if(!myLogbook.length){
-    el.innerHTML=`<div class="card" style="text-align:center;padding:30px;color:var(--text2)">Aucun vol enregistré pour le moment.</div>`;
-    return;
-  }
-  el.innerHTML=`<div class="card">
-    <table style="width:100%;border-collapse:collapse">
-      <thead><tr style="border-bottom:1px solid var(--border)">
-        ${['Date','Vol','Départ','Arrivée','Durée','NM','Appareil'].map(h=>`<th style="text-align:left;padding:8px 10px;font-size:10px;color:var(--text2);letter-spacing:1px;text-transform:uppercase">${h}</th>`).join('')}
-      </tr></thead>
-      <tbody>
-        ${myLogbook.map(l=>`<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:8px 10px;font-size:12px;color:var(--text2)">${l.date||'—'}</td>
-          <td style="padding:8px 10px;font-size:12px;color:var(--gold);font-family:'JetBrains Mono',monospace">${l.flight_no||'—'}</td>
-          <td style="padding:8px 10px;font-size:12px;color:var(--text)">${l.origin||'—'}</td>
-          <td style="padding:8px 10px;font-size:12px;color:var(--text)">${l.destination||'—'}</td>
-          <td style="padding:8px 10px;font-size:12px;color:var(--blue)">${Math.floor((l.duration_min||0)/60)}h${String((l.duration_min||0)%60).padStart(2,'0')}</td>
-          <td style="padding:8px 10px;font-size:12px;color:var(--text2)">${l.distance_nm||0}</td>
-          <td style="padding:8px 10px;font-size:12px;color:var(--text);font-family:'JetBrains Mono',monospace">${l.aircraft_id||'—'}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-  </div>`;
-}
-
-// ── NOTIFICATIONS ──
-function renderNotifications(){
-  const el=document.getElementById('notif-list');
-  if(!notifications.length){
-    el.innerHTML=`<div class="card" style="text-align:center;padding:30px;color:var(--text2)">Aucune notification.</div>`;
-    return;
-  }
-  el.innerHTML=notifications.map(n=>`
-    <div class="notif-item ${n.read?'':'unread'}">
-      ${!n.read?'<div class="notif-dot"></div>':'<div style="width:8px"></div>'}
-      <div style="flex:1">
-        <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">${n.title||'Notification'}</div>
-        <div style="font-size:12px;color:var(--text2)">${n.message||''}</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:4px">${new Date(n.created_at).toLocaleString('fr-FR')}</div>
-      </div>
-    </div>`).join('');
-}
-
-// ── REX ──
-function renderRex(){
-  const el=document.getElementById('rex-list');
-  if(!rexList.length){
-    el.innerHTML=`<div class="card" style="text-align:center;padding:30px;color:var(--text2)">Aucun REX publié pour le moment.</div>`;
-    return;
-  }
-  const severityColor={LOW:'var(--green)',MEDIUM:'var(--gold)',HIGH:'var(--orange)',CRITICAL:'#E84A4A'};
-  el.innerHTML=rexList.map(r=>`
-    <div class="rex-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div style="display:flex;gap:8px;align-items:center">
-          <span class="badge" style="background:${severityColor[r.severity]||'var(--text2)'}22;color:${severityColor[r.severity]||'var(--text2)'};border:1px solid ${severityColor[r.severity]||'var(--text2)'}44">${r.severity||'—'}</span>
-          <span class="badge" style="background:var(--card2);color:var(--text2);border:1px solid var(--border)">${r.type||'—'}</span>
-        </div>
-        <div style="font-size:10px;color:var(--text3)">${new Date(r.created_at).toLocaleDateString('fr-FR')}</div>
-      </div>
-      <div style="font-size:13px;color:var(--text);margin-bottom:8px">${r.description||'—'}</div>
-      ${r.corrective_actions?`<div style="background:var(--card2);border-radius:6px;padding:8px 12px;margin-bottom:6px"><div style="font-size:10px;color:var(--blue);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Actions correctives</div><div style="font-size:12px;color:var(--text2)">${r.corrective_actions}</div></div>`:''}
-      ${r.preventive_actions?`<div style="background:var(--card2);border-radius:6px;padding:8px 12px"><div style="font-size:10px;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Actions préventives</div><div style="font-size:12px;color:var(--text2)">${r.preventive_actions}</div></div>`:''}
-    </div>`).join('');
-}
-
-// ── PIREP ──
-async function submitPirep(){
-  const type=document.getElementById('pirep-type').value;
-  const severity=document.getElementById('pirep-severity').value;
-  const flightId=document.getElementById('pirep-flight').value;
-  const desc=document.getElementById('pirep-desc').value.trim();
-  const actions=document.getElementById('pirep-actions').value.trim();
-  const anon=document.getElementById('pirep-anon').checked;
-
-  if(!desc){showToast('Veuillez décrire l\'événement.','err');return;}
-
-  const{error}=await db.from('pireps').insert({
-    flight_id:flightId||null,
-    pilot_id:anon?null:currentPilot.id,
-    type,severity,
-    description:desc,
-    actions_immediates:actions,
-    anonymous:anon,
-    status:'OUVERT',
-    date:new Date().toISOString().split('T')[0],
-  });
-
-  if(error){showToast('Erreur lors de la soumission.','err');return;}
-  showToast('✓ PIREP soumis avec succès — merci pour votre vigilance !');
-  document.getElementById('pirep-desc').value='';
-  document.getElementById('pirep-actions').value='';
-}
-
-// ── VOL EFFECTUÉ ──
-async function markComplete(flightId){
-  const flight=myFlights.find(f=>f.id===flightId);
-  if(!flight)return;
-
-  await db.from('flights').update({status:'COMPLETED',updated_at:new Date().toISOString()}).eq('id',flightId);
-
-  // Ajouter au carnet de route
-  if(!flight.is_ferry){
-    await db.from('logbook').insert({
-      pilot_id:currentPilot.id,
-      flight_id:flight.id,
-      aircraft_id:flight.aircraft_id,
-      flight_no:flight.flight_no,
-      date:flight.scheduled_date,
-      origin:flight.origin,
-      destination:flight.destination,
-      dep_time:flight.dep_time,
-      arr_time:flight.arr_time,
-      duration_min:parseDuration(flight.duration),
-      distance_nm:flight.distance_nm,
-      as_captain:true,
-    });
-  }
-
-  // Mettre à jour la position de l'avion
-  await db.from('fleet').update({
-    current_airport:flight.destination,
-    updated_at:new Date().toISOString()
-  }).eq('id',flight.aircraft_id);
-
-  showToast('✓ Vol marqué comme effectué !');
-  await loadMyData();
-}
-
-async function markFlightComplete(){
-  if(currentFlight) await markComplete(currentFlight.id);
-  closeModal();
-}
-
-async function skipSegment(flightId){
-  await db.from('flights').update({status:'SKIPPED',updated_at:new Date().toISOString()}).eq('id',flightId);
-  showToast('Segment skippé');
-  await loadMyData();
-}
-
-function parseDuration(dur){
-  if(!dur)return 0;
-  const m=dur.match(/(\d+)h(\d+)/);
-  return m?parseInt(m[1])*60+parseInt(m[2]):0;
-}
-
-// ── BRIEFING ──
-function openBriefing(flightId){
-  currentFlight=myFlights.find(f=>f.id===flightId);
-  if(!currentFlight)return;
-  const f=currentFlight;
-
-  document.getElementById('modal-flightno').textContent=f.flight_no;
-  document.getElementById('modal-route').textContent=`${f.origin} → ${f.destination}`;
-  document.getElementById('modal-sub').textContent=`${f.route_label||''} · ${f.dep_time||''}→${f.arr_time||''} · ${f.aircraft_id}`;
-  document.getElementById('modal-ferry-badge').style.display=f.is_ferry?'inline-block':'none';
-
-  // General tab
-  document.getElementById('tab-general').innerHTML=`
-    ${f.is_ferry?`<div style="background:#7EB8D422;border:1px solid var(--blue);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">✈ VOL DE MISE EN PLACE — Sans passagers commerciaux${f.skippable?' · Skippable si nécessaire':''}</div>`:''}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
-      ${[['N° de vol',f.flight_no],['Appareil',f.aircraft_id],['Départ',`${f.origin} — ${f.dep_time}`],['Arrivée',`${f.destination} — ${f.arr_time}`],['Distance',`${f.distance_nm} NM`],['Durée',f.duration],['Passagers',f.pax_count>0?`${f.pax_count} PAX`:'Aucun (ferry)'],['FL prévu',f.planned_fl||'FL370'],['Alternat',f.alternate||'—'],['Statut',f.status]].map(([l,v])=>`
-      <div style="background:var(--card);border-radius:7px;padding:11px 14px;border:1px solid var(--border)">
-        <div style="font-size:9px;color:var(--text2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">${l}</div>
-        <div style="font-size:12px;color:var(--text);font-weight:600">${v}</div>
-      </div>`).join('')}
-    </div>`;
-
-  // WX tab
-  document.getElementById('tab-wx').innerHTML=`
-    <div style="background:#7EB8D411;border:1px solid #7EB8D433;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">📡 Cliquez sur "SimBrief" pour obtenir les METARs temps réel</div>
-    ${[{icao:f.origin,role:'Départ'},{icao:f.destination,role:'Destination'},{icao:f.alternate||'LFRS',role:'Alternat'}].map(wx=>`
-    <div style="background:var(--card);border-radius:7px;padding:13px 14px;border:1px solid var(--border);margin-bottom:9px">
-      <div style="display:flex;gap:8px;margin-bottom:9px;align-items:center">
-        <div style="font-size:13px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace">${wx.icao}</div>
-        <div style="font-size:10px;color:var(--text2)">${wx.role}</div>
-      </div>
-      <div style="font-size:11px;color:var(--green);font-family:'JetBrains Mono',monospace;background:var(--card2);padding:7px 11px;border-radius:5px;margin-bottom:7px">METAR ${wx.icao} — Chargez SimBrief pour les données temps réel</div>
-    </div>`).join('')}`;
-
-  // NOTAM tab
-  document.getElementById('tab-notam').innerHTML=`
-    <div style="background:#7EB8D411;border:1px solid #7EB8D433;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">📡 Consultez Navigraph Charts ou le SIA pour les NOTAMs officiels</div>
-    <div style="font-size:12px;color:var(--text2);padding:8px">Aucun NOTAM automatique — utilisez Navigraph ou le SIA France.</div>`;
-
-  // Fuel tab
-  const fuel=calcFuel(f.aircraft_id,f.distance_nm||300,400);
-  document.getElementById('tab-fuel').innerHTML=fuel?`
-    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:13px">Plan carburant — ${f.aircraft_id}</div>
-    <div style="background:var(--card2);border-radius:7px;padding:8px 13px;margin-bottom:13px;font-size:11px;color:var(--text2)">
-      Capacité réservoirs : <span style="color:var(--text);font-weight:700">${fuel.capacity.toLocaleString('fr-FR')} kg</span>
-    </div>
-    ${[['Carburant de route',`${fuel.trip_fuel.toLocaleString()} kg`,`${f.distance_nm} NM`],['Montée',`${fuel.climb.toLocaleString()} kg`,'Profil standard'],['Descente',`${fuel.descent.toLocaleString()} kg`,'Profil standard'],['Carburant alternat',`${fuel.alternate.toLocaleString()} kg`,f.alternate||'—'],['Réserve finale 45 min',`${fuel.reserve.toLocaleString()} kg`,'EU OPS 1.255'],['Contingence 5%',`${fuel.cont.toLocaleString()} kg`,'EU OPS'],['Roulage départ',`${fuel.taxi.toLocaleString()} kg`,'Estimé']].map(([l,v,s])=>`
-    <div style="background:var(--card);border-radius:7px;padding:9px 14px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-      <div><div style="font-size:12px;color:var(--text);font-weight:600">${l}</div><div style="font-size:10px;color:var(--text2)">${s}</div></div>
-      <div style="font-size:12px;font-weight:700;color:var(--blue)">${v}</div>
-    </div>`).join('')}
-    <div style="background:#C8A96E22;border-radius:7px;padding:11px 14px;border:1px solid var(--gold);display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:13px;font-weight:800;color:var(--gold)">TOTAL EMPORT</div>
-      <div style="font-size:18px;font-weight:900;color:var(--gold)">${fuel.total.toLocaleString('fr-FR')} kg</div>
-    </div>
-    <div style="font-size:10px;color:var(--text3);padding:7px 13px;margin-top:4px">📡 Utilisez SimBrief pour un calcul précis avec météo et vent réels</div>
-  `:`<div style="text-align:center;padding:30px;color:var(--text2)">Données carburant non disponibles</div>`;
-
-  switchTab('general');
-  document.getElementById('modal-overlay').classList.add('open');
-}
-
-async function loadSimBrief(){
-  const btn=document.getElementById('simbrief-btn');
-  btn.disabled=true;btn.textContent='⏳ Chargement…';
-  const f=currentFlight;
-  try{
-    const resp=await fetch(`https://www.simbrief.com/api/xml.fetcher.php?userid=${SIMBRIEF_PILOT_ID}&json=1`);
-    const data=await resp.json();
-    const fuel_data=data.fuel||{};
-    const route=data.general?.route||'Non disponible';
-    document.getElementById('tab-simbrief').innerHTML=`
-      <div style="background:#7EB8D411;border:1px solid #7EB8D433;border-radius:9px;padding:14px 16px;margin-bottom:14px">
-        <div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:12px">📡 Plan de vol SimBrief</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-          ${[['Départ',data.origin?.icao_code||f.origin],['Arrivée',data.destination?.icao_code||f.destination],['FL prévu',data.general?.initial_altitude||f.planned_fl],['Distance',`${data.general?.air_distance||f.distance_nm} NM`],['Durée',data.times?.est_time_enroute||f.duration],['Carbu. total',`${fuel_data.plan_ramp||'—'} kg`]].map(([l,v])=>`
-          <div style="background:var(--card);border-radius:7px;padding:11px 14px;border:1px solid var(--border)">
-            <div style="font-size:9px;color:var(--text2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">${l}</div>
-            <div style="font-size:12px;color:var(--text);font-weight:600">${v}</div>
-          </div>`).join('')}
-        </div>
-        <div style="margin-bottom:10px">
-          <div style="font-size:10px;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Route ATC</div>
-          <div style="font-size:11px;color:var(--text);font-family:'JetBrains Mono',monospace;background:var(--card2);padding:10px;border-radius:7px;line-height:1.6;word-break:break-all">${route}</div>
-        </div>
-        <div style="font-size:10px;color:var(--text3)">Pilot ID ${SIMBRIEF_PILOT_ID} · ${new Date().toLocaleTimeString('fr-FR')}</div>
-      </div>`;
-    switchTab('simbrief');
-    showToast('✓ Plan SimBrief chargé !');
-  }catch(e){
-    document.getElementById('tab-simbrief').innerHTML=`
-      <div style="background:#E8A87C11;border:1px solid var(--orange);border-radius:9px;padding:18px;text-align:center">
-        <div style="font-size:13px;color:var(--orange);font-weight:700;margin-bottom:8px">SimBrief non accessible</div>
-        <div style="font-size:12px;color:var(--text2)">Créez d'abord le plan sur <a href="https://dispatch.simbrief.com" target="_blank" style="color:var(--blue)">dispatch.simbrief.com</a></div>
-      </div>`;
-    switchTab('simbrief');
-  }
-  btn.disabled=false;btn.textContent='📡 SimBrief';
-}
-
-function closeModal(){document.getElementById('modal-overlay').classList.remove('open');currentFlight=null;}
-function switchTab(id){
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+id)?.classList.add('active');
-  document.querySelectorAll('.modal-tab').forEach(t=>{if(t.getAttribute('onclick')===`switchTab('${id}')`)t.classList.add('active');});
-}
-document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
-
-// ── NAV ──
-function showPage(id){ if(id==='available') loadAvailableRotations();
+// ═══════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════
+function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id)?.classList.add('active');
   document.querySelector(`.nav-item[data-page="${id}"]`)?.classList.add('active');
-  // Marquer les notifications comme lues
-  if(id==='notifications') markNotifsRead();
+  if(id==='map')setTimeout(initMap,100);
+  if(id==='planning')loadPlanningData();
+  if(id==='safety')loadRex();
+  if(id==='notifications')markNotifsRead();
 }
 document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>showPage(n.dataset.page)));
 
-async function markNotifsRead(){
-  const unread=notifications.filter(n=>!n.read).map(n=>n.id);
-  if(unread.length){
-    await db.from('notifications').update({read:true}).in('id',unread);
-    notifications.forEach(n=>n.read=true);
-    document.getElementById('notif-badge').style.display='none';
+// ═══════════════════════════════
+// AUTH
+// ═══════════════════════════════
+async function init(){
+  const{data:{session}}=await db.auth.getSession();
+  if(!session){window.location.href='login.html';return;}
+  currentUser=session.user;
+  const{data:pilot}=await db.from('pilots').select('*').eq('user_id',currentUser.id).single();
+  if(!pilot){alert('Profil pilote non trouvé.');await db.auth.signOut();window.location.href='login.html';return;}
+  currentPilot=pilot;
+
+  // Si admin en mode preview - afficher lien retour
+  const isPreview=new URLSearchParams(window.location.search).get('preview')==='1';
+  if(pilot.role==='ADMIN'||pilot.role==='DISPATCH'){
+    if(!isPreview){window.location.href='waba-ops-v3.html';return;}
+    document.getElementById('admin-link-container').innerHTML='<a href="waba-ops-v3.html" class="admin-link">← Retour intranet admin</a>';
   }
+
+  // Afficher infos pilote
+  document.getElementById('pilot-name').textContent=pilot.name||'Pilote';
+  document.getElementById('pilot-role').textContent=pilot.role||'PILOTE';
+  document.getElementById('dash-greeting').textContent=`Bonjour, ${pilot.name?.split(' ')[0]||'Pilote'} !`;
+
+  // Qualifications
+  const ratings=Array.isArray(pilot.ratings)?pilot.ratings:(pilot.ratings||'').replace(/[{}"]/g,'').split(',').filter(Boolean);
+  document.getElementById('pilot-ratings').innerHTML=ratings.map(r=>`<span class="rating-badge">${r.trim()}</span>`).join('');
+
+  await loadAllData();
+  setupRealtime();
+  setInterval(checkExpired,60*60*1000);
 }
 
-// ── REALTIME ──
+async function logout(){await db.auth.signOut();window.location.href='login.html';}
+
+// ═══════════════════════════════
+// LOAD DATA
+// ═══════════════════════════════
+async function loadAllData(){
+  const[fl,lb,notif,opts,allOpts,fleetData]= await Promise.all([
+    db.from('flights').select('*').eq('week_start',WEEK).order('scheduled_date').order('dep_time'),
+    db.from('logbook').select('*').eq('pilot_id',currentPilot.id).order('date',{ascending:false}),
+    db.from('notifications').select('*').eq('pilot_id',currentPilot.id).order('created_at',{ascending:false}),
+    db.from('flight_options').select('*').eq('pilot_id',currentPilot.id),
+    db.from('flight_options').select('*'),
+    db.from('fleet').select('*'),
+  ]);
+  allFlights=fl.data||[];
+  myFlights=allFlights.filter(f=>f.reserved_by===currentPilot.user_id);
+  myLogbook=lb.data||[];
+  notifications=notif.data||[];
+  myOptions=opts.data||[];
+  allOptions=allOpts.data||[];
+  fleet=fleetData.data||[];
+
+  renderDashboard();
+  renderLogbook();
+  renderNotifBadge();
+  renderFleet();
+}
+
 function setupRealtime(){
-  db.channel('my-flights-rt').on('postgres_changes',{event:'*',schema:'public',table:'flights'},()=>{
-    loadMyData();
-  }).subscribe();
-  db.channel('my-notifs-rt').on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:`pilot_id=eq.${currentPilot.id}`},p=>{
-    notifications.unshift(p.new);
-    renderNotifications();
-    const badge=document.getElementById('notif-badge');
-    badge.textContent=notifications.filter(n=>!n.read).length;
-    badge.style.display='flex';
-    showToast(`🔔 ${p.new.title}`);
+  db.channel('flights-rt').on('postgres_changes',{event:'*',schema:'public',table:'flights'},()=>loadAllData()).subscribe();
+  db.channel('notif-rt').on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:`pilot_id=eq.${currentPilot.id}`},p=>{
+    notifications.unshift(p.new);renderNotifBadge();showToast('🔔 '+p.new.title);
   }).subscribe();
 }
 
+// ═══════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════
+function renderDashboard(){
+  // KPIs
+  const totalMin=myLogbook.reduce((a,l)=>a+(l.duration_min||0),0);
+  const totalNM=myLogbook.reduce((a,l)=>a+(l.distance_nm||0),0);
+  const dests=new Set(myLogbook.map(l=>l.destination)).size;
+  document.getElementById('kpi-flights').textContent=myLogbook.length;
+  document.getElementById('kpi-hours').textContent=Math.floor(totalMin/60)+'h'+String(totalMin%60).padStart(2,'0');
+  document.getElementById('kpi-nm').textContent=totalNM.toLocaleString('fr-FR');
+  document.getElementById('kpi-dest').textContent=dests;
 
-// ═══════════════════════════════════════════
-// ESPACE RÉSERVATION — Options & Confirmations
-// ═══════════════════════════════════════════
-let allFlights = [];
-let myOptions = [];
-let currentResa = null;
-let resaMepChoice = 'do';
-let resaRtbChoice = 'do';
-let currentFilter = 'all';
-
-// Charger toutes les données nécessaires
-async function loadAvailableRotations() {
-  // Vols de la semaine
-  const { data: flData } = await db.from('flights')
-    .select('*').eq('week_start', WEEK_START)
-    .order('scheduled_date').order('dep_time');
-  allFlights = flData || [];
-
-  // Mes options
-  const { data: optData } = await db.from('flight_options')
-    .select('*').eq('pilot_id', currentPilot?.id);
-  myOptions = optData || [];
-
-  // Toutes les options (pour afficher combien de pilotes intéressés)
-  const { data: allOpts } = await db.from('flight_options').select('*');
-  window._allOptions = allOpts || [];
-
-  renderAvailable();
-}
-
-function filterAvail(f) {
-  currentFilter = f;
-  ['all','available','mine'].forEach(id => {
-    const btn = document.getElementById('filter-'+id);
-    if (btn) {
-      btn.className = id === f ? 'btn btn-gold' : 'btn btn-ghost';
-      btn.style.fontSize = '10px';
-      btn.style.padding = '5px 12px';
+  // Prochain vol réservé
+  const nextFlight=myFlights.find(f=>!f.is_ferry&&f.status==='SCHEDULED');
+  const nextEl=document.getElementById('my-next-flight');
+  if(nextFlight){
+    const rot=getRotation(nextFlight.rotation_id||nextFlight.id);
+    const col=AC_COLORS[nextFlight.aircraft_id]||'var(--gold)';
+    // Time remaining for reservation
+    let expiryHtml='';
+    if(nextFlight.reserved_at){
+      const remaining=new Date(nextFlight.reserved_at).getTime()+24*60*60*1000-Date.now();
+      if(remaining>0){const h=Math.floor(remaining/3600000),m=Math.floor((remaining%3600000)/60000);expiryHtml=`<div style="font-size:10px;color:var(--orange);margin-top:6px">⏱ Expire dans ${h}h${String(m).padStart(2,'0')}</div>`;}
     }
-  });
-  renderAvailable();
-}
-
-function renderAvailable() {
-  const el = document.getElementById('available-list');
-  if (!el) return;
-  if (!allFlights.length) {
-    el.innerHTML = `<div class="card" style="text-align:center;padding:30px;color:var(--text2)">Aucune rotation planifiée cette semaine.</div>`;
-    return;
-  }
-
-  // Grouper par rotation
-  const rotations = {};
-  allFlights.forEach(f => {
-    const rid = f.rotation_id || f.id;
-    if (!rotations[rid]) rotations[rid] = [];
-    rotations[rid].push(f);
-  });
-  Object.values(rotations).forEach(r => r.sort((a,b) => (a.sequence||0)-(b.sequence||0)));
-
-  // Filtrer selon qualifications pilote
-  const myRatings = Array.isArray(currentPilot?.ratings)
-    ? currentPilot.ratings
-    : (currentPilot?.ratings||'').replace(/[{}"]/g,'').split(',').map(r=>r.trim()).filter(Boolean);
-
-  let sorted = Object.values(rotations).sort((a,b) => {
-    const af=a[0],bf=b[0];
-    return (af.scheduled_date+af.dep_time).localeCompare(bf.scheduled_date+bf.dep_time);
-  });
-
-  // Appliquer filtre
-  if (currentFilter === 'available') {
-    sorted = sorted.filter(rot => !rot[0].reserved_by && rot[0].status === 'SCHEDULED');
-  } else if (currentFilter === 'mine') {
-    const myOptRids = new Set(myOptions.map(o => o.rotation_id));
-    sorted = sorted.filter(rot => {
-      const rid = rot[0].rotation_id || rot[0].id;
-      return rot[0].reserved_by === currentPilot?.user_id || myOptRids.has(rid);
-    });
-  }
-
-  if (!sorted.length) {
-    el.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:var(--text2)">Aucune rotation dans ce filtre.</div>`;
-    return;
-  }
-
-  el.innerHTML = sorted.map(rotation => {
-    const main = rotation.find(f => !f.is_ferry) || rotation[0];
-    const rid = rotation[0].rotation_id || rotation[0].id;
-    const acColor = {'F-EVOK':'#B8973E','F-EXZA':'#4A9BB8','F-LIMB':'#5A9E6F'}[main.aircraft_id] || '#B8973E';
-
-    // Vérifier qualifications
-    const acIcao = main.aircraft_id === 'F-EVOK' ? 'C750' : main.aircraft_id === 'F-EXZA' ? 'C700' : 'B738';
-    const qualified = myRatings.includes(acIcao) || myRatings.length === 0;
-
-    // Status
-    const isConfirmedByMe = main.reserved_by === currentPilot?.user_id;
-    const isConfirmedByOther = main.reserved_by && main.reserved_by !== currentPilot?.user_id;
-    const isCompleted = rotation.every(f => f.status === 'COMPLETED' || f.status === 'SKIPPED');
-    const myOptHere = myOptions.find(o => o.rotation_id === rid);
-    const optCount = (window._allOptions||[]).filter(o => o.rotation_id === rid).length;
-
-    // Expiry check for my reservations
-    let expiresIn = null;
-    if (isConfirmedByMe && main.reserved_at) {
-      const exp = new Date(main.reserved_at).getTime() + 24*60*60*1000;
-      const remaining = exp - Date.now();
-      if (remaining > 0) {
-        const h = Math.floor(remaining/3600000);
-        const m = Math.floor((remaining%3600000)/60000);
-        expiresIn = `${h}h${String(m).padStart(2,'0')}`;
-      }
-    }
-
-    let borderColor = acColor + '22';
-    let bgColor = 'var(--card-bg)';
-    if (isConfirmedByMe) { borderColor = acColor + '60'; bgColor = acColor + '08'; }
-    else if (isConfirmedByOther) { borderColor = '#5A986F44'; bgColor = '#5A986F05'; }
-    else if (myOptHere) { borderColor = '#4A9BB444'; bgColor = '#4A9BB408'; }
-
-    return `<div class="rotation-card" style="border-color:${borderColor};background:${bgColor};margin-bottom:12px;${!qualified?'opacity:.5':''}">
-
-      <!-- Header -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #252530">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;color:${acColor}">${main.aircraft_id}</div>
+    nextEl.innerHTML=`<div class="card" style="border-color:${col}40;background:${col}06">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="mono fw7" style="font-size:18px;color:${col}">${nextFlight.aircraft_id}</div>
           <div>
-            <div style="font-size:12px;font-weight:600">${main.origin} → ${main.destination}</div>
-            <div style="font-size:10px;color:var(--text2);font-family:'JetBrains Mono',monospace">${main.scheduled_date} · ${main.planned_fl||'—'} · ${rotation.length} seg.</div>
+            <div style="font-size:16px;font-weight:700">${nextFlight.origin} → ${nextFlight.destination}</div>
+            <div style="font-size:11px;color:var(--text2);font-family:var(--font-mono)">${nextFlight.scheduled_date} · ${nextFlight.dep_time} UTC · ${nextFlight.planned_fl}</div>
+            ${expiryHtml}
           </div>
         </div>
-        <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          ${!qualified ? `<span style="font-size:9px;color:var(--orange);font-weight:700">⚠ Qualification ${acIcao} requise</span>` : ''}
-          ${isCompleted ? `<span style="font-size:10px;color:var(--green)">✓ Effectuée</span>` :
-            isConfirmedByMe ? `<span style="background:${acColor}22;color:${acColor};border:1px solid ${acColor}44;border-radius:4px;padding:2px 8px;font-size:9px;font-weight:700">MA RÉSERVATION${expiresIn ? ` · ${expiresIn}` : ''}</span>` :
-            isConfirmedByOther ? `<span style="font-size:10px;color:var(--green)">✓ Réservée</span>` :
-            myOptHere ? `<span style="background:rgba(74,155,184,.15);color:var(--blue);border:1px solid rgba(74,155,184,.3);border-radius:4px;padding:2px 8px;font-size:9px;font-weight:700">MON OPTION</span>` :
-            `<span style="font-size:10px;color:var(--text2)">🤖 Virtuel</span>`
-          }
-          ${optCount > 0 && !isConfirmedByMe && !isConfirmedByOther ? `<span style="font-size:9px;color:var(--text2)">${optCount} pilote(s) intéressé(s)</span>` : ''}
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-gold" onclick="showPage('planning')" style="font-size:11px">📋 Voir rotation</button>
         </div>
       </div>
+      ${rot.map(f=>{const sc=f.is_ferry?'var(--blue)':'var(--green)';return`<div class="seg-row" style="border-left-color:${sc}">
+        <div style="font-size:9px;font-weight:800;color:${sc};font-family:var(--font-mono);min-width:36px">${f.sequence===1?'MEP':f.sequence===3?'RTB':'PAX'}</div>
+        <div style="flex:1;font-size:11px;font-weight:600">${f.origin} → ${f.destination}</div>
+        <div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${f.dep_time} UTC · ${f.duration}</div>
+        ${f.is_virtual&&f.is_ferry?`<span style="font-size:9px;color:var(--text2)">🤖 virtuel</span>`:''}
+      </div>`;}).join('')}
+    </div>`;
+  }else{
+    nextEl.innerHTML=`<div class="card" style="text-align:center;padding:30px"><div style="font-size:32px;margin-bottom:12px;opacity:.3">✈</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">Aucune rotation réservée cette semaine</div><button class="btn btn-gold" onclick="showPage('planning')">Réserver une rotation →</button></div>`;
+  }
 
-      <!-- Segments -->
-      <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
-        ${rotation.map(f => {
-          const sc = f.is_ferry ? 'var(--blue)' : 'var(--green)';
-          const sl = f.sequence===1?'↑ MEP':f.sequence===3?'↓ RTB':'✈ PAX';
-          return `<div style="display:flex;align-items:center;gap:10px;background:#0e0e12;border-radius:5px;padding:7px 10px;border-left:2px solid ${sc}">
-            <div style="font-size:9px;font-weight:800;color:${sc};font-family:'JetBrains Mono',monospace;min-width:36px">${sl}</div>
-            <div style="flex:1;font-size:11px;font-weight:600">${f.origin} → ${f.destination}</div>
-            <div style="font-size:10px;color:var(--text2);font-family:'JetBrains Mono',monospace">${f.duration} · ${f.distance_nm} NM${f.pax_count>0?` · ${f.pax_count} PAX`:''}</div>
-            ${f.is_ferry&&f.skippable?`<span style="font-size:9px;color:var(--text2)">skippable</span>`:''}
-          </div>`;
-        }).join('')}
-      </div>
+  // Options en cours
+  const myOptRids=new Set(myOptions.map(o=>o.rotation_id));
+  const optFlights=allFlights.filter(f=>myOptRids.has(f.rotation_id||f.id)&&!f.reserved_by);
+  const optSection=document.getElementById('my-options-dash');
+  if(myOptions.length&&optFlights.length){
+    optSection.style.display='block';
+    const seen=new Set();
+    const optRots=optFlights.filter(f=>{const rid=f.rotation_id||f.id;if(seen.has(rid))return false;seen.add(rid);return true;});
+    document.getElementById('options-list-dash').innerHTML=optRots.map(f=>{
+      const col=AC_COLORS[f.aircraft_id]||'var(--gold)';
+      return`<div class="card card-sm mb8" style="border-color:rgba(74,155,184,.3)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="mono fw7" style="color:${col}">${f.aircraft_id}</div>
+            <div><div style="font-size:12px;font-weight:600">${f.origin} → ${f.destination}</div><div style="font-size:10px;color:var(--text2)">${f.scheduled_date}</div></div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onclick="openResa('${f.rotation_id||f.id}')" class="btn btn-gold" style="font-size:10px;padding:4px 10px">Confirmer →</button>
+            <button onclick="removeOption('${f.rotation_id||f.id}')" class="btn btn-ghost" style="font-size:10px;padding:4px 10px">Retirer</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }else optSection.style.display='none';
+}
 
-      <!-- Actions -->
-      ${isCompleted || isConfirmedByOther || !qualified ? '' :
-        isConfirmedByMe ? `
-        <div style="display:flex;gap:8px">
-          <button onclick="openBriefing('${main.id}')" style="flex:1;background:rgba(74,155,184,.15);border:1px solid rgba(74,155,184,.3);color:var(--blue);border-radius:6px;padding:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">📋 Briefing</button>
-          <button onclick="cancelResa('${rid}')" style="background:transparent;border:1px solid #252530;color:var(--text2);border-radius:6px;padding:8px 14px;cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif">✕ Annuler</button>
-        </div>` :
-        myOptHere ? `
-        <div style="display:flex;gap:8px">
-          <button onclick="openResa('${rid}')" style="flex:1;background:#B8973E;border:none;color:#000;border-radius:6px;padding:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">✓ Confirmer ma réservation</button>
-          <button onclick="removeOption('${rid}')" style="background:transparent;border:1px solid rgba(74,155,184,.3);color:var(--blue);border-radius:6px;padding:8px 14px;cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif">Retirer option</button>
-        </div>` :
-        `<div style="display:flex;gap:8px">
-          <button onclick="addOption('${rid}')" style="flex:1;background:rgba(74,155,184,.12);border:1px solid rgba(74,155,184,.3);color:var(--blue);border-radius:6px;padding:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">☆ Mettre une option</button>
-          <button onclick="openResa('${rid}')" style="flex:1;background:#B8973E;border:none;color:#000;border-radius:6px;padding:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">→ Réserver directement</button>
-        </div>`
+function getRotation(rid){
+  const rot=allFlights.filter(f=>(f.rotation_id||f.id)===rid);
+  return rot.sort((a,b)=>(a.sequence||0)-(b.sequence||0));
+}
+
+// ═══════════════════════════════
+// FLEET
+// ═══════════════════════════════
+function renderFleet(){
+  const el=document.getElementById('fleet-list');if(!el)return;
+  el.innerHTML=fleet.map(ac=>{const col=AC_COLORS[ac.id]||'var(--gold)';return`<div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+      <div><div class="mono fw7" style="font-size:18px;color:${col}">${ac.id}</div><div style="font-size:11px;color:var(--text2)">${ac.type}</div></div>
+      <span class="badge" style="background:${ac.status==='AVAILABLE'?'rgba(90,158,111,.15)':'rgba(196,122,58,.15)'};color:${ac.status==='AVAILABLE'?'var(--green)':'var(--orange)'};border:1px solid ${ac.status==='AVAILABLE'?'rgba(90,158,111,.3)':'rgba(196,122,58,.3)'}">${ac.status==='AVAILABLE'?'Disponible':'Maintenance'}</span>
+    </div>
+    <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:8px">
+      <div style="font-size:9px;color:var(--text2);margin-bottom:2px;font-family:var(--font-mono)">POSITION</div>
+      <div class="mono fw7" style="font-size:13px">${ac.current_airport||ac.base}</div>
+    </div>
+    <div class="g2">
+      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:7px 10px"><div style="font-size:9px;color:var(--text2);font-family:var(--font-mono)">RAYON</div><div class="mono" style="font-size:12px;font-weight:600">${ac.range_nm} NM</div></div>
+      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:7px 10px"><div style="font-size:9px;color:var(--text2);font-family:var(--font-mono)">FL MAX</div><div class="mono" style="font-size:12px;font-weight:600">FL${ac.max_fl}</div></div>
+    </div>
+  </div>`;}).join('');
+
+  // Map fleet list
+  const mel=document.getElementById('map-fleet-list');if(!mel)return;
+  mel.innerHTML=fleet.map(ac=>{const col=AC_COLORS[ac.id]||'var(--gold)';return`<div class="card card-sm"><div class="mono fw7" style="color:${col};margin-bottom:4px">${ac.id}</div><div style="font-size:11px;color:var(--text2)">${ac.type}</div><div class="mono" style="font-size:12px;margin-top:4px">${ac.current_airport||ac.base}</div></div>`;}).join('');
+}
+
+// ═══════════════════════════════
+// MAP
+// ═══════════════════════════════
+function initMap(){
+  if(leafletMap)return;
+  leafletMap=L.map('range-map',{zoomControl:true,attributionControl:false}).setView([47.5,2],4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:10}).addTo(leafletMap);
+  fleet.forEach(ac=>{
+    if(!ac.current_lat||!ac.current_lon)return;
+    const col=AC_COLORS[ac.id]||'#B8973E';
+    const icon=L.divIcon({html:`<div style="color:${col};font-size:18px;text-shadow:0 0 8px ${col}88">✈</div>`,className:'',iconSize:[20,20],iconAnchor:[10,10]});
+    L.marker([ac.current_lat,ac.current_lon],{icon}).bindPopup(`<b style="color:${col}">${ac.id}</b><br>${ac.type}<br>${ac.current_airport}`).addTo(leafletMap);
+  });
+  // Bases WABA
+  [{lat:47.1569,lon:-1.6078,n:'LFRS Base'},{lat:48.6032,lon:-3.8158,n:'LFRU Tech'}].forEach(b=>{
+    L.circleMarker([b.lat,b.lon],{radius:5,color:'#B8973E',fillColor:'#B8973E',fillOpacity:.8,weight:2}).bindPopup(b.n).addTo(leafletMap);
+  });
+}
+// ═══════════════════════════════
+// PLANNING & RÉSERVATION
+// ═══════════════════════════════
+async function loadPlanningData(){
+  const[fl,opts,allOpts]=await Promise.all([
+    db.from('flights').select('*').eq('week_start',WEEK).order('scheduled_date').order('dep_time'),
+    db.from('flight_options').select('*').eq('pilot_id',currentPilot.id),
+    db.from('flight_options').select('*'),
+  ]);
+  allFlights=fl.data||[];
+  myFlights=allFlights.filter(f=>f.reserved_by===currentPilot.user_id);
+  myOptions=opts.data||[];
+  allOptions=allOpts.data||[];
+  renderPlanning();
+}
+
+function setFilter(f){
+  currentFilter=f;
+  ['all','available','mine'].forEach(id=>{
+    const btn=document.getElementById('f-'+id);if(!btn)return;
+    btn.className=id===f?'btn btn-gold':'btn btn-ghost';
+    btn.style.fontSize='10px';btn.style.padding='5px 12px';
+  });
+  renderPlanning();
+}
+
+function renderPlanning(){
+  // Mes réservations actives
+  const myResas=myFlights.filter(f=>!f.is_ferry&&f.status==='SCHEDULED');
+  const resaSection=document.getElementById('my-reservations-section');
+  const resaList=document.getElementById('my-reservations-list');
+  if(myResas.length){
+    resaSection.style.display='block';
+    const seen=new Set();
+    const myRots=myResas.filter(f=>{const rid=f.rotation_id||f.id;if(seen.has(rid))return false;seen.add(rid);return true;});
+    resaList.innerHTML=myRots.map(f=>{
+      const rot=getRotation(f.rotation_id||f.id);
+      const col=AC_COLORS[f.aircraft_id]||'var(--gold)';
+      let expiryHtml='';
+      if(f.reserved_at){
+        const rem=new Date(f.reserved_at).getTime()+24*60*60*1000-Date.now();
+        if(rem>0){const h=Math.floor(rem/3600000),m=Math.floor((rem%3600000)/60000);expiryHtml=`<span style="font-size:10px;color:var(--orange)">⏱ ${h}h${String(m).padStart(2,'0')} restant</span>`;}
+        else expiryHtml=`<span style="font-size:10px;color:var(--red)">⚠ Expirée</span>`;
       }
+      return`<div class="rot-card" style="border-color:${col}50;background:${col}06">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="mono fw7" style="color:${col}">${f.aircraft_id}</div>
+            <div><div style="font-size:13px;font-weight:700">${f.origin} → ${f.destination}</div><div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${f.scheduled_date} · ${f.dep_time} UTC</div></div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">${expiryHtml}<button onclick="cancelResa('${f.rotation_id||f.id}')" class="btn btn-ghost" style="font-size:10px;padding:4px 10px">✕ Annuler</button></div>
+        </div>
+        ${rot.map(s=>{const sc=s.is_ferry?'var(--blue)':'var(--green)';const virt=s.is_virtual&&s.is_ferry;return`<div class="seg-row" style="border-left-color:${sc};opacity:${s.status==='COMPLETED'||s.status==='SKIPPED'?.5:1}">
+          <div style="font-size:9px;font-weight:800;color:${sc};font-family:var(--font-mono);min-width:36px">${s.sequence===1?'MEP':s.sequence===3?'RTB':'PAX'}</div>
+          <div style="flex:1;font-size:11px;font-weight:600">${s.origin} → ${s.destination}</div>
+          <div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${s.dep_time} UTC · ${s.duration}</div>
+          ${virt?`<span style="font-size:9px;color:var(--text2)">🤖 virtuel</span>`:s.status==='COMPLETED'?`<span style="font-size:9px;color:var(--green)">✓</span>`:''}
+        </div>`;}).join('')}
+      </div>`;
+    }).join('');
+  }else resaSection.style.display='none';
+
+  // Rotations disponibles
+  const myRatings=Array.isArray(currentPilot?.ratings)?currentPilot.ratings:(currentPilot?.ratings||'').replace(/[{}"]/g,'').split(',').map(r=>r.trim()).filter(Boolean);
+  const myOptRids=new Set(myOptions.map(o=>o.rotation_id));
+
+  // Grouper par rotation
+  const rots={};
+  allFlights.forEach(f=>{const rid=f.rotation_id||f.id;if(!rots[rid])rots[rid]=[];rots[rid].push(f);});
+  Object.values(rots).forEach(r=>r.sort((a,b)=>(a.sequence||0)-(b.sequence||0)));
+  let sorted=Object.values(rots).sort((a,b)=>{const af=a[0],bf=b[0];return(af.scheduled_date+af.dep_time).localeCompare(bf.scheduled_date+bf.dep_time);});
+
+  // Filtres
+  if(currentFilter==='available')sorted=sorted.filter(r=>!r[0].reserved_by&&r[0].status==='SCHEDULED');
+  else if(currentFilter==='mine')sorted=sorted.filter(r=>{const rid=r[0].rotation_id||r[0].id;return r[0].reserved_by===currentPilot?.user_id||myOptRids.has(rid);});
+
+  const el=document.getElementById('rotations-list');
+  if(!sorted.length){el.innerHTML=`<div class="card" style="text-align:center;padding:24px;color:var(--text2)">Aucune rotation dans ce filtre.</div>`;return;}
+
+  el.innerHTML=sorted.map(rot=>{
+    const main=rot.find(f=>!f.is_ferry)||rot[0];
+    const rid=rot[0].rotation_id||rot[0].id;
+    const col=AC_COLORS[main.aircraft_id]||'var(--gold)';
+    const acIcao=main.aircraft_id==='F-EVOK'?'C750':main.aircraft_id==='F-EXZA'?'C700':'B738';
+    const qualified=myRatings.includes(acIcao)||myRatings.length===0;
+    const isMyResa=main.reserved_by===currentPilot?.user_id;
+    const isOtherResa=main.reserved_by&&main.reserved_by!==currentPilot?.user_id;
+    const isDone=rot.every(f=>f.status==='COMPLETED'||f.status==='SKIPPED');
+    const myOpt=myOptions.find(o=>o.rotation_id===rid);
+    const optCount=(allOptions||[]).filter(o=>o.rotation_id===rid).length;
+
+    let border=col+'22',bg='var(--card-bg)';
+    if(isMyResa){border=col+'55';bg=col+'08';}
+    else if(isOtherResa){border='rgba(90,158,111,.35)';bg='rgba(90,158,111,.03)';}
+    else if(myOpt){border='rgba(74,155,184,.35)';bg='rgba(74,155,184,.04)';}
+
+    return`<div class="rot-card" style="border-color:${border};background:${bg};${!qualified?'opacity:.55':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="mono fw7" style="font-size:15px;color:${col}">${main.aircraft_id}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700">${main.origin} → ${main.destination}</div>
+            <div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${main.scheduled_date} · ${main.planned_fl||'—'} · ${rot.length} seg.</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+          ${!qualified?`<span style="font-size:9px;color:var(--orange);font-weight:700">⚠ QT ${acIcao} requise</span>`:''}
+          ${isDone?`<span style="font-size:10px;color:var(--green)">✓ Effectuée</span>`:
+            isMyResa?`<span class="badge" style="background:${col}18;color:${col};border:1px solid ${col}40">MA RÉSERVATION</span>`:
+            isOtherResa?`<span style="font-size:10px;color:var(--green)">✓ Réservée</span>`:
+            myOpt?`<span class="badge" style="background:rgba(74,155,184,.14);color:var(--blue);border:1px solid rgba(74,155,184,.3)">MON OPTION</span>`:
+            `<span style="font-size:10px;color:var(--text2)">🤖 Virtuel</span>`}
+          ${optCount>0&&!isMyResa&&!isOtherResa?`<span style="font-size:9px;color:var(--text2)">${optCount} intéressé(s)</span>`:''}
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        ${rot.map(f=>{const sc=f.is_ferry?'var(--blue)':'var(--green)';return`<div class="seg-row" style="border-left-color:${sc}">
+          <div style="font-size:9px;font-weight:800;color:${sc};font-family:var(--font-mono);min-width:36px">${f.sequence===1?'MEP':f.sequence===3?'RTB':'PAX'}</div>
+          <div style="flex:1;font-size:11px;font-weight:600">${f.origin} → ${f.destination}</div>
+          <div style="font-size:10px;color:var(--text2);font-family:var(--font-mono)">${f.duration} · ${f.distance_nm} NM${f.pax_count>0?` · ${f.pax_count} PAX`:''}</div>
+          ${f.is_ferry&&f.skippable?`<span style="font-size:8px;color:var(--text2)">skippable</span>`:''}
+        </div>`;}).join('')}
+      </div>
+      ${isDone||!qualified?'':isMyResa?`
+      <div style="display:flex;gap:6px"><button onclick="showPage('planning')" class="btn btn-ghost" style="font-size:10px;flex:1">Gérer ma rotation</button></div>`:
+      isOtherResa?`<div style="font-size:11px;color:var(--text2);text-align:center;padding:6px">Cette rotation est déjà réservée</div>`:
+      myOpt?`<div style="display:flex;gap:6px">
+        <button onclick="openResa('${rid}')" class="btn btn-gold" style="flex:1;font-size:10px">✓ Confirmer ma réservation</button>
+        <button onclick="removeOption('${rid}')" class="btn btn-ghost" style="font-size:10px;padding:5px 12px">Retirer option</button>
+      </div>`:`<div style="display:flex;gap:6px">
+        <button onclick="addOption('${rid}')" class="btn btn-blue" style="flex:1;font-size:10px">☆ Mettre une option</button>
+        <button onclick="openResa('${rid}')" class="btn btn-gold" style="flex:1;font-size:10px">→ Réserver</button>
+      </div>`}
     </div>`;
   }).join('');
 }
 
-// ── OPTIONS ──
-async function addOption(rotationId) {
-  if (!currentPilot) return;
-  const { error } = await db.from('flight_options').insert({
-    rotation_id: rotationId,
-    pilot_id: currentPilot.id,
-  });
-  if (error) { showToast('Erreur lors de la mise en option', 'err'); return; }
-  showToast('✓ Option posée sur cette rotation');
-  await loadAvailableRotations();
+// ═══════════════════════════════
+// OPTIONS
+// ═══════════════════════════════
+async function addOption(rid){
+  if(!currentPilot)return;
+  const{error}=await db.from('flight_options').insert({rotation_id:rid,pilot_id:currentPilot.id});
+  if(error){showToast('Erreur','err');return;}
+  showToast('✓ Option posée !');
+  await loadPlanningData();
 }
-
-async function removeOption(rotationId) {
-  if (!currentPilot) return;
-  await db.from('flight_options').delete()
-    .eq('rotation_id', rotationId).eq('pilot_id', currentPilot.id);
+async function removeOption(rid){
+  await db.from('flight_options').delete().eq('rotation_id',rid).eq('pilot_id',currentPilot.id);
   showToast('Option retirée');
-  await loadAvailableRotations();
+  await loadPlanningData();
 }
 
-// ── OUVRIR MODAL RÉSERVATION ──
-function openResa(rotationId) {
-  const rotation = Object.values(
-    allFlights.reduce((acc, f) => {
-      const rid = f.rotation_id || f.id;
-      if (!acc[rid]) acc[rid] = [];
-      acc[rid].push(f);
-      return acc;
-    }, {})
-  ).find(r => (r[0].rotation_id || r[0].id) === rotationId);
-  if (!rotation) return;
+// ═══════════════════════════════
+// RÉSERVATION
+// ═══════════════════════════════
+function openResa(rid){
+  const rot=getRotation(rid);if(!rot.length)return;
+  currentResa={rotationId:rid,rotation:rot};
+  resaMepChoice='do';resaRtbChoice='do';
+  const main=rot.find(f=>!f.is_ferry)||rot[0];
+  const hasMep=rot.some(f=>f.sequence===1&&f.is_ferry);
+  const hasRtb=rot.some(f=>f.sequence===3&&f.is_ferry);
+  document.getElementById('resa-title').textContent=`${main.aircraft_id} — ${main.origin} → ${main.destination}`;
+  document.getElementById('resa-sub').textContent=`${main.scheduled_date} · ${rot.length} segment(s) · ${main.planned_fl||'—'}`;
+  document.getElementById('resa-time').value=main.dep_time||'19:00';
+  document.getElementById('resa-mep-block').style.display=hasMep?'block':'none';
+  document.getElementById('resa-rtb-block').style.display=hasRtb?'block':'none';
+  document.getElementById('resa-segments').innerHTML=rot.map(f=>`<div class="seg-row" style="border-left-color:${f.is_ferry?'var(--blue)':'var(--green)'}">
+    <div style="font-size:9px;font-weight:800;color:${f.is_ferry?'var(--blue)':'var(--green)'};font-family:var(--font-mono);min-width:36px">${f.sequence===1?'MEP':f.sequence===3?'RTB':'PAX'}</div>
+    <div style="flex:1;font-size:11px;font-weight:600">${f.origin} → ${f.destination}</div>
+    <div style="font-size:10px;color:var(--text2)">${f.duration}</div>
+  </div>`).join('');
+  document.getElementById('resa-overlay').style.display='flex';
+}
+function closeResa(){document.getElementById('resa-overlay').style.display='none';currentResa=null;}
 
-  currentResa = { rotationId, rotation };
-  resaMepChoice = 'do';
-  resaRtbChoice = 'do';
-
-  const main = rotation.find(f => !f.is_ferry) || rotation[0];
-  const hasMep = rotation.some(f => f.sequence === 1 && f.is_ferry);
-  const hasRtb = rotation.some(f => f.sequence === 3 && f.is_ferry);
-
-  document.getElementById('resa-title').textContent = `${main.aircraft_id} — ${main.origin} → ${main.destination}`;
-  document.getElementById('resa-sub').textContent = `${main.scheduled_date} · ${rotation.length} segment(s) · ${main.planned_fl||'—'}`;
-  document.getElementById('resa-time').value = main.dep_time || '19:00';
-
-  // Show/hide MEP block
-  const mepBlock = document.getElementById('resa-mep-block');
-  if (mepBlock) mepBlock.style.display = hasMep ? 'block' : 'none';
-  const rtbBlock = document.getElementById('resa-rtb-block');
-  if (rtbBlock) rtbBlock.style.display = hasRtb ? 'block' : 'none';
-
-  // Segments summary
-  document.getElementById('resa-segments').innerHTML = rotation.map(f => `
-    <div style="display:flex;align-items:center;gap:8px;background:#0e0e12;border-radius:5px;padding:7px 10px;margin-bottom:5px;border-left:2px solid ${f.is_ferry?'var(--blue)':'var(--green)'}">
-      <div style="font-size:9px;font-weight:800;color:${f.is_ferry?'var(--blue)':'var(--green)'};font-family:'JetBrains Mono',monospace;min-width:36px">${f.sequence===1?'MEP':f.sequence===3?'RTB':'PAX'}</div>
-      <div style="flex:1;font-size:11px;font-weight:600">${f.origin} → ${f.destination}</div>
-      <div style="font-size:10px;color:var(--text2)">${f.duration}</div>
-    </div>`).join('');
-
-  document.getElementById('resa-overlay').style.display = 'flex';
+function setMepChoice(c){
+  resaMepChoice=c;
+  const doBtn=document.getElementById('mep-do'),skipBtn=document.getElementById('mep-skip');
+  doBtn.className=c==='do'?'btn btn-blue':'btn btn-ghost';doBtn.style.flex='1';
+  skipBtn.className=c==='skip'?'btn btn-green':'btn btn-ghost';skipBtn.style.flex='1';
+}
+function setRtbChoice(c){
+  resaRtbChoice=c;
+  const doBtn=document.getElementById('rtb-do'),skipBtn=document.getElementById('rtb-skip');
+  doBtn.className=c==='do'?'btn btn-blue':'btn btn-ghost';doBtn.style.flex='1';
+  skipBtn.className=c==='skip'?'btn btn-green':'btn btn-ghost';skipBtn.style.flex='1';
 }
 
-function closeResa() {
-  document.getElementById('resa-overlay').style.display = 'none';
-  currentResa = null;
-}
-
-function setMepChoice(c) {
-  resaMepChoice = c;
-  document.getElementById('mep-do').style.background = c==='do' ? 'rgba(74,155,184,.15)' : 'transparent';
-  document.getElementById('mep-do').style.borderColor = c==='do' ? 'var(--blue)' : '#252530';
-  document.getElementById('mep-do').style.color = c==='do' ? 'var(--blue)' : 'var(--text2)';
-  document.getElementById('mep-skip').style.background = c==='skip' ? 'rgba(90,158,111,.15)' : 'transparent';
-  document.getElementById('mep-skip').style.borderColor = c==='skip' ? 'var(--green)' : '#252530';
-  document.getElementById('mep-skip').style.color = c==='skip' ? 'var(--green)' : 'var(--text2)';
-}
-
-function setRtbChoice(c) {
-  resaRtbChoice = c;
-  document.getElementById('rtb-do').style.background = c==='do' ? 'rgba(74,155,184,.15)' : 'transparent';
-  document.getElementById('rtb-do').style.borderColor = c==='do' ? 'var(--blue)' : '#252530';
-  document.getElementById('rtb-do').style.color = c==='do' ? 'var(--blue)' : 'var(--text2)';
-  document.getElementById('rtb-skip').style.background = c==='skip' ? 'rgba(90,158,111,.15)' : 'transparent';
-  document.getElementById('rtb-skip').style.borderColor = c==='skip' ? 'var(--green)' : '#252530';
-  document.getElementById('rtb-skip').style.color = c==='skip' ? 'var(--green)' : 'var(--text2)';
-}
-
-// ── CONFIRMER RÉSERVATION ──
-async function confirmReservation() {
-  if (!currentResa || !currentPilot) return;
-  const depTimeUTC = document.getElementById('resa-time').value;
-  if (!depTimeUTC) { showToast('Veuillez indiquer une heure de départ UTC', 'err'); return; }
-
-  const { rotationId, rotation } = currentResa;
-  const mainFlight = rotation.find(f => !f.is_ferry) || rotation[0];
-  const dateStr = mainFlight.scheduled_date;
-  const now = new Date().toISOString();
-
-  // Calculer heure PAX réelle
-  const paxDepUTC = new Date(`${dateStr}T${depTimeUTC}:00Z`);
-  const paxDurMin = parseDuration(mainFlight.duration);
-  const paxArrUTC = new Date(paxDepUTC.getTime() + paxDurMin * 60000);
-
-  const updates = [];
-
-  for (const f of rotation) {
-    let upd = {
-      reserved_by: currentPilot.user_id,
-      is_virtual: false,
-      reserved_at: now,
-      captain_id: currentPilot.id,
-      updated_at: now,
-    };
-
-    if (f.sequence === 2) {
-      // Vol commercial — heure choisie par le pilote
-      upd.actual_dep_utc = paxDepUTC.toISOString();
-      upd.actual_arr_utc = paxArrUTC.toISOString();
-      upd.dep_time = depTimeUTC;
-      upd.arr_time = paxArrUTC.toUTCString().slice(17,22);
-      upd.skippable = false;
-    } else if (f.sequence === 1) {
-      // MEP — virtuel ou pilote
-      if (resaMepChoice === 'skip') {
-        upd.is_virtual = true;
-        upd.skippable = true;
-        upd.status = 'SCHEDULED'; // équipage virtuel le fera
-      } else {
-        // Le pilote fait la MEP — on la cale 1h avant le vol PAX
-        const mepDurMin = parseDuration(f.duration);
-        const mepArrUTC = new Date(paxDepUTC.getTime() - 30 * 60000); // arrivée 30min avant départ PAX
-        const mepDepUTC = new Date(mepArrUTC.getTime() - mepDurMin * 60000);
-        upd.actual_dep_utc = mepDepUTC.toISOString();
-        upd.actual_arr_utc = mepArrUTC.toISOString();
-        upd.dep_time = mepDepUTC.toUTCString().slice(17,22);
-        upd.arr_time = mepArrUTC.toUTCString().slice(17,22);
-      }
-    } else if (f.sequence === 3) {
-      // RTB — virtuel ou pilote
-      if (resaRtbChoice === 'skip') {
-        upd.is_virtual = true;
-        upd.skippable = true;
-      } else {
-        const rtbDepUTC = new Date(paxArrUTC.getTime() + 45 * 60000); // 45min après arrivée PAX
-        const rtbDurMin = parseDuration(f.duration);
-        const rtbArrUTC = new Date(rtbDepUTC.getTime() + rtbDurMin * 60000);
-        upd.actual_dep_utc = rtbDepUTC.toISOString();
-        upd.actual_arr_utc = rtbArrUTC.toISOString();
-        upd.dep_time = rtbDepUTC.toUTCString().slice(17,22);
-        upd.arr_time = rtbArrUTC.toUTCString().slice(17,22);
-      }
+async function confirmReservation(){
+  if(!currentResa||!currentPilot)return;
+  const depUTC=document.getElementById('resa-time').value;
+  if(!depUTC){showToast('Indiquez une heure de départ UTC','err');return;}
+  const{rotationId,rotation}=currentResa;
+  const main=rotation.find(f=>!f.is_ferry)||rotation[0];
+  const dateStr=main.scheduled_date;
+  const now=new Date().toISOString();
+  const paxDep=new Date(`${dateStr}T${depUTC}:00Z`);
+  const paxArr=new Date(paxDep.getTime()+parseDur(main.duration)*60000);
+  const updates=rotation.map(f=>{
+    let upd={reserved_by:currentPilot.user_id,is_virtual:false,reserved_at:now,captain_id:currentPilot.id,updated_at:now};
+    if(f.sequence===2){upd.actual_dep_utc=paxDep.toISOString();upd.actual_arr_utc=paxArr.toISOString();upd.dep_time=depUTC;upd.arr_time=paxArr.toUTCString().slice(17,22);upd.skippable=false;}
+    else if(f.sequence===1){
+      if(resaMepChoice==='skip'){upd.is_virtual=true;upd.skippable=true;}
+      else{const mepDur=parseDur(f.duration);const mepArr=new Date(paxDep.getTime()-30*60000);const mepDep=new Date(mepArr.getTime()-mepDur*60000);upd.actual_dep_utc=mepDep.toISOString();upd.actual_arr_utc=mepArr.toISOString();upd.dep_time=mepDep.toUTCString().slice(17,22);upd.arr_time=mepArr.toUTCString().slice(17,22);}
+    }else if(f.sequence===3){
+      if(resaRtbChoice==='skip'){upd.is_virtual=true;upd.skippable=true;}
+      else{const rtbDep=new Date(paxArr.getTime()+45*60000);const rtbArr=new Date(rtbDep.getTime()+parseDur(f.duration)*60000);upd.actual_dep_utc=rtbDep.toISOString();upd.actual_arr_utc=rtbArr.toISOString();upd.dep_time=rtbDep.toUTCString().slice(17,22);upd.arr_time=rtbArr.toUTCString().slice(17,22);}
     }
-    updates.push(db.from('flights').update(upd).eq('id', f.id));
-  }
-
-  await Promise.all(updates);
-
-  // Supprimer toutes les options sur cette rotation (plus disponible)
-  await db.from('flight_options').delete().eq('rotation_id', rotationId);
-
-  // Notification
-  await db.from('notifications').insert({
-    pilot_id: currentPilot.id,
-    type: 'ROTATION_ASSIGNED',
-    title: 'Rotation confirmée !',
-    message: `Vol ${mainFlight.origin} → ${mainFlight.destination} le ${dateStr} à ${depTimeUTC} UTC · MEP: ${resaMepChoice==='skip'?'Équipage virtuel':'Vous'} · RTB: ${resaRtbChoice==='skip'?'Équipage virtuel':'Vous'}`,
-    read: false,
+    return db.from('flights').update(upd).eq('id',f.id);
   });
-
-  closeResa();
-  showToast('✓ Rotation réservée ! Bon vol !');
-  await loadMyData();
-  await loadAvailableRotations();
+  await Promise.all(updates);
+  await db.from('flight_options').delete().eq('rotation_id',rotationId);
+  await db.from('notifications').insert({pilot_id:currentPilot.id,type:'ROTATION_ASSIGNED',title:'Rotation confirmée !',message:`${main.origin} → ${main.destination} le ${dateStr} à ${depUTC} UTC`,read:false});
+  closeResa();showToast('✓ Rotation réservée ! Bon vol !');
+  await loadAllData();await loadPlanningData();
 }
 
-// ── ANNULER RÉSERVATION ──
-async function cancelResa(rotationId) {
-  if (!confirm('Annuler votre réservation ? La rotation repassera en équipage virtuel.')) return;
-  const myFlightsInRot = allFlights.filter(f =>
-    (f.rotation_id || f.id) === rotationId &&
-    f.reserved_by === currentPilot?.user_id
-  );
-  await Promise.all(myFlightsInRot.map(f =>
-    db.from('flights').update({
-      reserved_by: null, is_virtual: true,
-      actual_dep_utc: null, actual_arr_utc: null,
-      reserved_at: null, updated_at: new Date().toISOString(),
-    }).eq('id', f.id)
-  ));
-  showToast('Réservation annulée — repassée en équipage virtuel');
-  await loadMyData();
-  await loadAvailableRotations();
+async function cancelResa(rid){
+  if(!confirm('Annuler cette réservation ? Elle repassera en équipage virtuel.'))return;
+  const toCancel=allFlights.filter(f=>(f.rotation_id||f.id)===rid&&f.reserved_by===currentPilot?.user_id);
+  await Promise.all(toCancel.map(f=>db.from('flights').update({reserved_by:null,is_virtual:true,actual_dep_utc:null,actual_arr_utc:null,reserved_at:null,updated_at:new Date().toISOString()}).eq('id',f.id)));
+  showToast('Réservation annulée');await loadAllData();await loadPlanningData();
 }
 
-// ── SCHEDULER EXPIRY — vérifier réservations expirées (24h) ──
-async function checkExpiredReservations() {
-  const now = Date.now();
-  const expired = allFlights.filter(f =>
-    f.reserved_by &&
-    !f.is_virtual &&
-    f.reserved_at &&
-    f.status === 'SCHEDULED' &&
-    (now - new Date(f.reserved_at).getTime()) > 24 * 60 * 60 * 1000
-  );
-  if (expired.length) {
-    for (const f of expired) {
-      await db.from('flights').update({
-        reserved_by: null, is_virtual: true,
-        actual_dep_utc: null, actual_arr_utc: null,
-        reserved_at: null, updated_at: new Date().toISOString(),
-      }).eq('id', f.id);
-    }
-    showToast(`${expired.length} réservation(s) expirée(s) annulée(s) automatiquement`);
-    await loadAvailableRotations();
-  }
+async function checkExpired(){
+  const now=Date.now();
+  const expired=allFlights.filter(f=>f.reserved_by&&!f.is_virtual&&f.reserved_at&&f.status==='SCHEDULED'&&(now-new Date(f.reserved_at).getTime())>24*60*60*1000);
+  for(const f of expired){await db.from('flights').update({reserved_by:null,is_virtual:true,actual_dep_utc:null,actual_arr_utc:null,reserved_at:null,updated_at:new Date().toISOString()}).eq('id',f.id);}
+  if(expired.length){showToast(`${expired.length} réservation(s) expirée(s) annulée(s)`);await loadAllData();}
 }
 
+// ═══════════════════════════════
+// LOGBOOK
+// ═══════════════════════════════
+function renderLogbook(){
+  const totalMin=myLogbook.reduce((a,l)=>a+(l.duration_min||0),0);
+  const totalNM=myLogbook.reduce((a,l)=>a+(l.distance_nm||0),0);
+  const dests=new Set(myLogbook.map(l=>l.destination)).size;
+  document.getElementById('lb-flights').textContent=myLogbook.length;
+  document.getElementById('lb-hours').textContent=Math.floor(totalMin/60)+'h'+String(totalMin%60).padStart(2,'0');
+  document.getElementById('lb-nm').textContent=totalNM.toLocaleString('fr-FR');
+  document.getElementById('lb-dest').textContent=dests;
+  const el=document.getElementById('logbook-list');
+  if(!myLogbook.length){el.innerHTML=`<div class="card" style="text-align:center;padding:24px;color:var(--text2)">Aucun vol enregistré.</div>`;return;}
+  el.innerHTML=`<div class="card"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--border)">${['Date','Vol','Départ','Arrivée','Durée','NM','Appareil'].map(h=>`<th style="text-align:left;padding:7px 10px;font-size:9px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;font-family:var(--font-mono)">${h}</th>`).join('')}</tr></thead><tbody>${myLogbook.map(l=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 10px;font-size:11px;color:var(--text2)">${l.date||'—'}</td><td style="padding:7px 10px;font-size:11px;color:var(--gold);font-family:var(--font-mono)">${l.flight_no||'—'}</td><td style="padding:7px 10px;font-size:11px">${l.origin||'—'}</td><td style="padding:7px 10px;font-size:11px">${l.destination||'—'}</td><td style="padding:7px 10px;font-size:11px;color:var(--blue);font-family:var(--font-mono)">${Math.floor((l.duration_min||0)/60)}h${String((l.duration_min||0)%60).padStart(2,'0')}</td><td style="padding:7px 10px;font-size:11px;color:var(--text2)">${l.distance_nm||0}</td><td style="padding:7px 10px;font-size:11px;font-family:var(--font-mono)">${l.aircraft_id||'—'}</td></tr>`).join('')}</tbody></table></div>`;
+}
 
+// ═══════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════
+function renderNotifBadge(){
+  const unread=notifications.filter(n=>!n.read).length;
+  const b=document.getElementById('notif-badge');
+  if(b){b.textContent=unread;b.style.display=unread?'inline':'none';}
+  renderNotifs();
+}
+function renderNotifs(){
+  const el=document.getElementById('notif-list');if(!el)return;
+  if(!notifications.length){el.innerHTML=`<div class="card" style="text-align:center;padding:24px;color:var(--text2)">Aucune notification.</div>`;return;}
+  el.innerHTML=notifications.map(n=>`<div style="display:flex;gap:10px;background:var(--card-bg);border:1px solid ${n.read?'var(--border)':'rgba(184,151,62,.3)'};border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:7px"><div style="width:8px;height:8px;border-radius:50%;background:${n.read?'transparent':'var(--gold)'};margin-top:4px;flex-shrink:0;border:1px solid ${n.read?'var(--border)':'var(--gold)'}"></div><div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:3px">${n.title||'—'}</div><div style="font-size:11px;color:var(--text2)">${n.message||''}</div><div style="font-size:9px;color:var(--text3);margin-top:4px">${new Date(n.created_at).toLocaleString('fr-FR')}</div></div></div>`).join('');
+}
+async function markNotifsRead(){
+  const unread=notifications.filter(n=>!n.read).map(n=>n.id);
+  if(unread.length){await db.from('notifications').update({read:true}).in('id',unread);notifications.forEach(n=>n.read=true);renderNotifBadge();}
+}
 
+// ═══════════════════════════════
+// REX & PIREP
+// ═══════════════════════════════
+async function loadRex(){
+  const{data}=await db.from('pireps').select('*').eq('status','CLOTURE').order('created_at',{ascending:false});
+  rexList=data||[];
+  const el=document.getElementById('rex-list');if(!el)return;
+  if(!rexList.length){el.innerHTML=`<div class="card" style="text-align:center;padding:24px;color:var(--text2)">Aucun REX publié.</div>`;return;}
+  const sc={LOW:'var(--green)',MEDIUM:'var(--gold)',HIGH:'var(--orange)',CRITICAL:'var(--red)'};
+  el.innerHTML=rexList.map(r=>`<div class="card mb8"><div style="display:flex;gap:8px;margin-bottom:8px"><span class="badge" style="background:${sc[r.severity]||'var(--text2)'}18;color:${sc[r.severity]||'var(--text2)'};border:1px solid ${sc[r.severity]||'var(--text2)'}40">${r.severity||'—'}</span><span class="badge" style="background:var(--bg3);color:var(--text2);border:1px solid var(--border)">${r.type||'—'}</span><span style="margin-left:auto;font-size:10px;color:var(--text3)">${new Date(r.created_at).toLocaleDateString('fr-FR')}</span></div><div style="font-size:12px;color:var(--text);margin-bottom:8px">${r.description||'—'}</div>${r.corrective_actions?`<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:5px"><div style="font-size:9px;color:var(--blue);font-weight:800;margin-bottom:3px">ACTIONS CORRECTIVES</div><div style="font-size:11px;color:var(--text2)">${r.corrective_actions}</div></div>`:''}</div>`).join('');
+}
 
+async function submitPirep(){
+  const type=document.getElementById('pirep-type').value;
+  const severity=document.getElementById('pirep-severity').value;
+  const desc=document.getElementById('pirep-desc').value.trim();
+  const anon=document.getElementById('pirep-anon').checked;
+  if(!desc){showToast('Veuillez décrire l\'événement','err');return;}
+  const{error}=await db.from('pireps').insert({pilot_id:anon?null:currentPilot.id,type,severity,description:desc,anonymous:anon,status:'OUVERT',date:new Date().toISOString().split('T')[0]});
+  if(error){showToast('Erreur soumission','err');return;}
+  showToast('✓ PIREP soumis !');document.getElementById('pirep-desc').value='';
+}
 
-init().then(()=>{ setupRealtime(); loadAvailableRotations(); setInterval(checkExpiredReservations, 60*60*1000); });
+// ═══════════════════════════════
+// INIT
+// ═══════════════════════════════
+const _t=localStorage.getItem('waba-theme')||'dark';
+document.documentElement.setAttribute('data-theme',_t);
+const _tl=document.getElementById('theme-lbl');if(_tl)_tl.textContent=_t==='dark'?'MODE NUIT':'MODE JOUR';
+init();
 </script>
 </body>
 </html>
