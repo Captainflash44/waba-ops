@@ -1041,6 +1041,152 @@ function callsign(fno,ferry,acId){return ferry?acId.replace('-',''):fno;}
 // ═══════════════════════════════════════════
 let currentBriefFlight=null;
 
+// ═══════════════════════════════════════════
+// TERRAIN TAB — Chargement depuis Supabase
+// ═══════════════════════════════════════════
+async function loadTerrainTab(f) {
+  console.log('[TERRAIN] Loading:', f.origin, f.destination);
+  const [depRes, arrRes] = await Promise.all([
+    db.from('airports').select('*').eq('icao', f.origin).single(),
+    db.from('airports').select('*').eq('icao', f.destination).single(),
+  ]);
+  console.log('[TERRAIN] depRes:', depRes.data, depRes.error);
+  console.log('[TERRAIN] arrRes:', arrRes.data, arrRes.error);
+  const apDep = depRes.data;
+  const apArr = arrRes.data;
+
+  let html = '';
+
+  // Section DÉPART
+  html += buildAirportSection(apDep, f.origin, 'DEPART', 'var(--green)', f.aircraft_id);
+
+  html += '<div style="height:1px;background:var(--border);margin:18px 0"></div>';
+
+  // Section DESTINATION
+  html += buildAirportSection(apArr, f.destination, 'DESTINATION', 'var(--gold)', f.aircraft_id);
+
+  return html;
+}
+
+function buildAirportSection(ap, icao, role, color, acId) {
+  let html = '';
+
+  // Header
+  html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <div style="width:6px;height:6px;border-radius:50%;background:${color}"></div>
+    <div class="mono fw7" style="font-size:11px;letter-spacing:1px">${role} — ${icao}</div>
+    ${ap ? `<div style="font-size:11px;color:var(--text2)">${ap.name}</div>` : ''}
+  </div>`;
+
+  if (!ap) {
+    html += `<div style="padding:14px;background:var(--bg3);border-radius:var(--radius-sm);color:var(--text2);font-size:12px;margin-bottom:12px">
+      Données terrain non disponibles pour ${icao} — Consultez les cartes SIA/Jeppesen officielles.
+    </div>`;
+    return html;
+  }
+
+  // Infos générales
+  const cells = [
+    ['Pays', ap.country || '—'],
+    ['Élévation', ap.elevation_ft ? `${ap.elevation_ft} ft / ${Math.round(ap.elevation_ft * 0.3048)} m` : '—'],
+    ['Couvre-feu', ap.curfew ? `<span style="color:var(--orange)">⚠ ${ap.curfew_hours || 'Oui'}</span>` : '<span style="color:var(--green)">Aucun</span>'],
+    ['PPR', ap.ppr ? '<span style="color:var(--orange)">Requis</span>' : 'Non'],
+    ['Slot', ap.slot ? '<span style="color:var(--orange)">Requis</span>' : 'Non'],
+    ['Schengen', ap.schengen ? '<span style="color:var(--green)">Oui</span>' : '<span style="color:var(--orange)">Non</span>'],
+    ['Douanes', ap.customs ? (ap.customs_hours ? ap.customs_hours : 'Disponibles') : '<span style="color:var(--orange)">Non disponibles</span>'],
+    ['Carburant', ap.fuel_avail ? `${ap.fuel_type || 'Jet A-1'}` : '<span style="color:var(--orange)">Vérifier</span>'],
+  ];
+
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+    ${cells.map(([l,v]) => `<div class="bitem"><div class="blbl">${l}</div><div class="bval">${v}</div></div>`).join('')}
+  </div>`;
+
+  // Restriction bruit
+  if (ap.noise_restriction) {
+    html += `<div style="background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--orange)">
+      ⚠ Restriction bruit : ${ap.noise_restriction}
+    </div>`;
+  }
+
+  // Pistes depuis JSONB
+  if (ap.runways && ap.runways.length) {
+    html += `<div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">PISTES</div>`;
+    html += ap.runways.map(r => `
+      <div style="display:flex;gap:12px;align-items:center;background:var(--bg3);border-radius:var(--radius-sm);padding:8px 12px;border:1px solid var(--border);margin-bottom:6px">
+        <div class="mono fw7" style="color:var(--blue);min-width:55px">${r.id}</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600">${r.len ? r.len.toLocaleString('fr-FR') + ' m' : '—'} × ${r.w || '—'} m · ${r.surf || '—'}</div>
+          <div style="font-size:10px;color:var(--text2)">${r.ils || '—'} · PCN ${r.pcn || '—'}</div>
+        </div>
+      </div>`).join('');
+  } else if (ap.longest_rwy_m) {
+    html += `<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:8px 12px;border:1px solid var(--border);margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:4px;font-family:var(--font-mono)">PISTE PRINCIPALE</div>
+      <div style="font-size:12px;font-weight:600">${ap.longest_rwy_m.toLocaleString('fr-FR')} m · ILS : ${ap.ils ? (ap.ils_cat || 'Oui') : 'Non'}</div>
+    </div>`;
+  }
+
+  // Approches depuis JSONB
+  if (ap.approaches && ap.approaches.length) {
+    html += `<div style="font-size:10px;font-weight:700;color:var(--text2);margin:10px 0 6px;font-family:var(--font-mono);letter-spacing:1px">AIDES À L'APPROCHE</div>`;
+    html += `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
+      ${ap.approaches.map(a => `<span style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:3px 8px;font-size:10px;font-family:var(--font-mono)">${a}</span>`).join('')}
+    </div>`;
+  }
+
+  // Fréquences depuis JSONB
+  if (ap.freqs && Object.keys(ap.freqs).length) {
+    html += `<div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">FRÉQUENCES</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">
+      ${Object.entries(ap.freqs).map(([k,v]) => `<div class="bitem"><div class="blbl">${k}</div><div class="bval mono text-gold">${v}</div></div>`).join('')}
+    </div>`;
+  }
+
+  // Engine Out depuis JSONB
+  if (ap.eosid && ap.eosid.length) {
+    html += `<div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">PROCÉDURES ENGINE OUT (OEI)</div>`;
+    html += `<div style="font-size:10px;color:var(--text3);margin-bottom:8px">Indicatif · Consulter cartes SIA/Jeppesen officielles</div>`;
+    html += ap.eosid.map(e => `
+      <div class="eosid"><div class="mono fw7" style="color:var(--orange);margin-bottom:4px;font-size:11px">RWY ${e.rwy}</div>
+      <div style="font-size:11px;line-height:1.7">${e.proc}</div></div>`).join('');
+  }
+
+  // Dangers depuis JSONB
+  if (ap.dangers && ap.dangers.length) {
+    html += `<div style="background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:5px">DANGERS ET POINTS D'ATTENTION</div>
+      ${ap.dangers.map(d => `<div style="font-size:11px;margin-bottom:3px">· ${d}</div>`).join('')}
+    </div>`;
+  }
+
+  // Remarques
+  if (ap.remarks) {
+    html += `<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;border-left:3px solid var(--blue);margin-bottom:14px">
+      <div style="font-size:9px;color:var(--blue);font-weight:800;margin-bottom:4px;font-family:var(--font-mono)">REMARQUES OPS</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.7">${ap.remarks}</div>
+    </div>`;
+  }
+
+  // Commentaires pilotes
+  html += `<div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">COMMENTAIRES PILOTES — ${icao}</div>`;
+  html += `<div id="bc-${role.toLowerCase()}-${icao}" style="margin-bottom:8px">
+    <div style="padding:10px;background:var(--bg3);border-radius:var(--radius-sm);font-size:11px;color:var(--text2)">Chargement...</div>
+  </div>`;
+  html += `<div class="bitem">
+    <div class="blbl mb8">Ajouter un commentaire</div>
+    <textarea id="bctxt-${role.toLowerCase()}-${icao}" class="form-input" style="height:60px;margin-bottom:8px" placeholder="Votre expérience sur cet aéroport..."></textarea>
+    <div style="display:flex;gap:6px;align-items:center">
+      <span style="font-size:10px;color:var(--text2)">Note :</span>
+      ${[1,2,3,4,5].map(n => `<button id="bcstar-${role.toLowerCase()}-${icao}-${n}" onclick="setBRating('${role.toLowerCase()}-${icao}',${n})" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3)">★</button>`).join('')}
+      <button class="btn btn-gold" style="margin-left:auto;font-size:10px;padding:4px 12px" onclick="submitBComment('${icao}','${role.toLowerCase()}-${icao}','${acId}')">Publier</button>
+    </div>
+  </div>`;
+
+  return html;
+}
+
+
+
 function bTab(id){
   document.querySelectorAll('.btab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.btab-content').forEach(t=>t.classList.remove('active'));
@@ -1110,44 +1256,13 @@ function openBriefing(fid){
     </div>`;
 
   // ── TERRAIN ──
-  const tD=TERRAIN[f.origin],tA=TERRAIN[f.destination];
-  let th='';
-  // DÉPART
-  th+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div><div class="mono fw7" style="font-size:11px;letter-spacing:1px">DEPART — ${f.origin}</div></div>`;
-  if(tD){
-    th+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px"><div class="bitem"><div class="blbl">Elevation</div><div class="bval mono">${tD.elev} ft / ${Math.round(tD.elev*.3048)} m</div></div><div class="bitem"><div class="blbl">Couvre-feu</div><div class="bval" style="color:${tD.curfew?'var(--orange)':'var(--green)'}">${tD.curfew?'CURFEW '+tD.curfew_h:'Aucun'}</div></div><div class="bitem"><div class="blbl">PPR / Slot</div><div class="bval">${tD.ppr?'<span style="color:var(--orange)">PPR</span>':'OK'} · ${tD.slot?'<span style="color:var(--orange)">Slot</span>':'OK'}</div></div></div>`;
-    th+=`<div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">PISTES</div>`;
-    th+=tD.rwy.map(r=>`<div style="display:flex;gap:12px;align-items:center;background:var(--bg3);border-radius:var(--radius-sm);padding:8px 12px;border:1px solid var(--border);margin-bottom:6px"><div class="mono fw7" style="color:var(--blue);min-width:55px">${r.id}</div><div style="flex:1"><div style="font-size:12px;font-weight:600">${r.len.toLocaleString()} m x ${r.w} m · ${r.surf}</div><div style="font-size:10px;color:var(--text2)">${r.ils} · PCN ${r.pcn}</div></div></div>`).join('');
-    th+=`<div style="font-size:10px;font-weight:700;color:var(--text2);margin:10px 0 6px;font-family:var(--font-mono);letter-spacing:1px">AIDES A L'APPROCHE</div>`;
-    th+=`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${tD.app.map(a=>`<span style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:3px 8px;font-size:10px;font-family:var(--font-mono)">${a}</span>`).join('')}</div>`;
-    th+=`<div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">FREQUENCES</div>`;
-    th+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">${Object.entries(tD.freqs).map(([k,v])=>`<div class="bitem"><div class="blbl">${k}</div><div class="bval mono text-gold">${v}</div></div>`).join('')}</div>`;
-    if(tD.eosid?.length){
-      th+=`<div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">PROCEDURES ENGINE OUT (OEI)</div>`;
-      th+=`<div style="font-size:10px;color:var(--text3);margin-bottom:8px">Indicatif · Consulter cartes SIA/Jeppesen</div>`;
-      th+=tD.eosid.map(e=>`<div class="eosid"><div class="mono fw7" style="color:var(--orange);margin-bottom:4px;font-size:11px">RWY ${e.rwy}</div><div style="font-size:11px;line-height:1.7">${e.proc}</div></div>`).join('');
-    }
-    th+=`<div style="font-size:10px;font-weight:700;color:var(--text2);margin:12px 0 6px;font-family:var(--font-mono);letter-spacing:1px">COMMENTAIRES PILOTES — ${f.origin}</div>`;
-    th+=`<div id="bc-dep-${f.origin}" style="margin-bottom:8px"><div style="padding:10px;background:var(--bg3);border-radius:var(--radius-sm);font-size:11px;color:var(--text2)">Chargement...</div></div>`;
-    th+=`<div class="bitem mb12"><div class="blbl mb8">Ajouter un commentaire</div><textarea id="bctxt-dep-${f.origin}" class="form-input" style="height:60px;margin-bottom:8px" placeholder="Votre experience..."></textarea><div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px;color:var(--text2)">Note :</span>${[1,2,3,4,5].map(n=>`<button id="bcstar-dep-${n}-${f.origin}" onclick="setBRating('dep-${f.origin}',${n})" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3)">★</button>`).join('')}<button class="btn btn-gold" style="margin-left:auto;font-size:10px;padding:4px 12px" onclick="submitBComment('${f.origin}','dep-${f.origin}','${f.aircraft_id}')">Publier</button></div></div>`;
-  }else th+=`<div style="padding:12px;background:var(--bg3);border-radius:var(--radius-sm);color:var(--text2);font-size:12px;margin-bottom:12px">Donnees non disponibles pour ${f.origin}</div>`;
-  th+=`<div style="height:1px;background:var(--border);margin:14px 0"></div>`;
-  // DESTINATION
-  th+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:6px;height:6px;border-radius:50%;background:var(--gold)"></div><div class="mono fw7" style="font-size:11px;letter-spacing:1px">DESTINATION — ${f.destination}</div></div>`;
-  if(tA){
-    th+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px"><div class="bitem"><div class="blbl">Elevation</div><div class="bval mono">${tA.elev} ft / ${Math.round(tA.elev*.3048)} m</div></div><div class="bitem"><div class="blbl">Couvre-feu</div><div class="bval" style="color:${tA.curfew?'var(--orange)':'var(--green)'}">${tA.curfew?'CURFEW '+tA.curfew_h:'Aucun'}</div></div><div class="bitem"><div class="blbl">PPR / Slot</div><div class="bval">${tA.ppr?'<span style="color:var(--orange)">PPR</span>':'OK'} · ${tA.slot?'<span style="color:var(--orange)">Slot</span>':'OK'}</div></div></div>`;
-    if(tA.special||tA.noise||tA.weight_lbs)th+=`<div style="background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px"><div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:5px">ALERTES SPECIALES</div>${tA.special?`<div style="font-size:11px;margin-bottom:3px">· ${tA.special}</div>`:''}${tA.noise?`<div style="font-size:11px;margin-bottom:3px">· Bruit : ${tA.noise}</div>`:''}${tA.weight_lbs?`<div style="font-size:11px">· Masse max : ${tA.weight_lbs.toLocaleString()} lbs</div>`:''}</div>`;
-    th+=tA.rwy.map(r=>`<div style="display:flex;gap:12px;align-items:center;background:var(--bg3);border-radius:var(--radius-sm);padding:8px 12px;border:1px solid var(--border);margin-bottom:6px"><div class="mono fw7" style="color:var(--blue);min-width:55px">${r.id}</div><div style="flex:1"><div style="font-size:12px;font-weight:600">${r.len.toLocaleString()} m x ${r.w} m · ${r.surf}</div><div style="font-size:10px;color:var(--text2)">${r.ils} · PCN ${r.pcn}</div></div></div>`).join('');
-    th+=`<div style="display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 12px">${tA.app.map(a=>`<span style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:3px 8px;font-size:10px;font-family:var(--font-mono)">${a}</span>`).join('')}</div>`;
-    th+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">${Object.entries(tA.freqs).map(([k,v])=>`<div class="bitem"><div class="blbl">${k}</div><div class="bval mono text-gold">${v}</div></div>`).join('')}</div>`;
-    if(tA.dangers?.length)th+=`<div style="background:rgba(196,122,58,.07);border:1px solid rgba(196,122,58,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px"><div style="font-size:10px;font-weight:800;color:var(--orange);margin-bottom:5px">DANGERS ET POINTS D'ATTENTION</div>${tA.dangers.map(d=>`<div style="font-size:11px;margin-bottom:3px">· ${d}</div>`).join('')}</div>`;
-    th+=`<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;border-left:3px solid var(--blue);margin-bottom:14px"><div style="font-size:9px;color:var(--blue);font-weight:800;margin-bottom:4px;font-family:var(--font-mono)">REMARQUES OPS</div><div style="font-size:11px;color:var(--text2);line-height:1.7">${tA.remarks||'—'}</div></div>`;
-    th+=`<div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">COMMENTAIRES PILOTES — ${f.destination}</div>`;
-    th+=`<div id="bc-arr-${f.destination}" style="margin-bottom:8px"><div style="padding:10px;background:var(--bg3);border-radius:var(--radius-sm);font-size:11px;color:var(--text2)">Chargement...</div></div>`;
-    th+=`<div class="bitem"><div class="blbl mb8">Ajouter un commentaire</div><textarea id="bctxt-arr-${f.destination}" class="form-input" style="height:60px;margin-bottom:8px" placeholder="Votre experience..."></textarea><div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px;color:var(--text2)">Note :</span>${[1,2,3,4,5].map(n=>`<button id="bcstar-arr-${n}-${f.destination}" onclick="setBRating('arr-${f.destination}',${n})" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3)">★</button>`).join('')}<button class="btn btn-gold" style="margin-left:auto;font-size:10px;padding:4px 12px" onclick="submitBComment('${f.destination}','arr-${f.destination}','${f.aircraft_id}')">Publier</button></div></div>`;
-  }else th+=`<div style="padding:12px;background:var(--bg3);border-radius:var(--radius-sm);color:var(--text2);font-size:12px">Donnees non disponibles pour ${f.destination}</div>`;
-  document.getElementById('btab-terrain').innerHTML=th;
-  loadBComments(f.origin,'dep');loadBComments(f.destination,'arr');
+  // Charger depuis Supabase de façon asynchrone
+  document.getElementById('btab-terrain').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text2)">Chargement des données terrain...</div>';
+  loadTerrainTab(f).then(html => {
+    document.getElementById('btab-terrain').innerHTML = html;
+    loadBComments(f.origin,'dep');
+    loadBComments(f.destination,'arr');
+  });
 
   // ── PAX ──
   const PAX_NAMES=['Alexandre Moreau','Isabelle Petit','Francois Bernard','Marie Dubois','Julien Martin','Celine Robert','Antoine Simon','Nathalie Laurent','Pierre Leroy','Sandrine Thomas'];
