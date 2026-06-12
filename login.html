@@ -1,75 +1,95 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WABA — Connexion</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
+*{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#080808;
-  --card:#111111;
-  --border:#1e1e1e;
-  --text:#e8e4df;
-  --text2:#6b6b6b;
-  --gold:#C8A96E;
-  --green:#A8D5A2;
-  --red:#E8A87C;
+  --bg:#0A0A0C;--bg2:#0E0E12;--bg3:#14141A;--card:#111118;
+  --border:#1E1E28;--gold:#B8973E;--gold2:#D4AF60;
+  --text:#E8E6E0;--text2:#9A9899;--text3:#5A5860;
+  --green:#5A9E6F;--orange:#C47A3A;--blue:#4A9BB8;--red:#B85A5A;
+  --radius:12px;--radius-sm:8px;
+  --font-display:'Playfair Display',serif;
+  --font-body:'DM Sans',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
 }
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
-
-.logo{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;color:var(--text);letter-spacing:12px;margin-bottom:8px;text-align:center;}
-.logo-sub{font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--text2);margin-bottom:48px;text-align:center;}
-
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:420px;}
-
-.tabs{display:flex;gap:0;margin-bottom:32px;border-bottom:1px solid var(--border);}
-.tab{flex:1;padding:10px;text-align:center;cursor:pointer;font-size:12px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--text2);border-bottom:2px solid transparent;transition:all .2s;}
-.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
-
-.form-group{margin-bottom:20px;}
-.form-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text2);display:block;margin-bottom:8px;}
-.form-input{width:100%;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border .2s;}
-.form-input:focus{border-color:var(--gold);}
-.form-input::placeholder{color:#333;}
-
-select.form-input{cursor:pointer;appearance:none;}
-
-.btn-submit{width:100%;background:var(--gold);border:none;border-radius:8px;padding:14px;color:#000;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:8px;}
-.btn-submit:hover{background:#d4b57a;}
-.btn-submit:disabled{background:#333;color:#666;cursor:not-allowed;}
-
-.message{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;}
-.message.error{background:#E8A87C22;border:1px solid var(--red);color:var(--red);}
-.message.success{background:#A8D5A222;border:1px solid var(--green);color:var(--green);}
-
-.divider{display:flex;align-items:center;gap:12px;margin:24px 0;}
-.divider-line{flex:1;height:1px;background:var(--border);}
-.divider-text{font-size:10px;color:var(--text2);letter-spacing:2px;}
-
-.back-link{margin-top:24px;text-align:center;font-size:11px;color:var(--text2);}
-.back-link a{color:var(--gold);text-decoration:none;}
-
-.role-info{background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-top:12px;font-size:11px;color:var(--text2);line-height:1.6;}
-.role-info strong{color:var(--text);}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.logo{text-align:center;margin-bottom:32px}
+.logo-mark{font-family:var(--font-mono);font-size:11px;letter-spacing:4px;color:var(--gold);margin-bottom:8px}
+.logo-title{font-family:var(--font-display);font-size:28px;font-weight:500;color:var(--text)}
+.logo-sub{font-size:11px;color:var(--text3);letter-spacing:2px;margin-top:4px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:32px;width:100%;max-width:480px}
+.card-wide{max-width:680px}
+.tabs{display:flex;gap:0;margin-bottom:28px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)}
+.tab{flex:1;padding:10px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;background:var(--bg3);color:var(--text2);transition:all .2s;border:none;font-family:var(--font-body)}
+.tab.active{background:var(--gold);color:#000}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--text2);letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;font-family:var(--font-mono)}
+.form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text);font-size:13px;font-family:var(--font-body);outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--gold)}
+textarea.form-input{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-body);transition:all .2s;letter-spacing:.5px}
+.btn-gold{background:var(--gold);color:#000}
+.btn-gold:hover{background:var(--gold2)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text2)}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.message{padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;margin-top:12px;display:none}
+.message.error{background:rgba(184,90,90,.1);border:1px solid rgba(184,90,90,.3);color:#e8a0a0}
+.message.success{background:rgba(90,158,111,.1);border:1px solid rgba(90,158,111,.3);color:#8dd4a4}
+.step-indicator{display:flex;align-items:center;gap:8px;margin-bottom:24px}
+.step{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3)}
+.step.active{color:var(--gold)}
+.step.done{color:var(--green)}
+.step-num{width:22px;height:22px;border-radius:50%;border:1px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:var(--font-mono)}
+.step-sep{flex:1;height:1px;background:var(--border)}
+.aircraft-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+.aircraft-card{background:var(--bg3);border:2px solid var(--border);border-radius:var(--radius-sm);padding:12px;cursor:pointer;transition:all .2s;text-align:center}
+.aircraft-card:hover{border-color:var(--gold)}
+.aircraft-card.selected{border-color:var(--gold);background:rgba(184,151,62,.08)}
+.aircraft-card .reg{font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--gold);margin-bottom:2px}
+.aircraft-card .type{font-size:10px;color:var(--text2)}
+.aircraft-card .range{font-size:9px;color:var(--text3);margin-top:4px}
+/* QCM */
+.qcm-progress{background:var(--bg3);border-radius:4px;height:4px;margin-bottom:24px;overflow:hidden}
+.qcm-progress-bar{height:100%;background:var(--gold);transition:width .3s}
+.qcm-question{font-size:14px;font-weight:600;margin-bottom:16px;line-height:1.6}
+.qcm-options{display:flex;flex-direction:column;gap:8px}
+.qcm-option{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;cursor:pointer;font-size:13px;transition:all .2s;text-align:left}
+.qcm-option:hover{border-color:var(--gold);background:rgba(184,151,62,.05)}
+.qcm-option.selected{border-color:var(--gold);background:rgba(184,151,62,.1);color:var(--gold)}
+.qcm-option.correct{border-color:var(--green);background:rgba(90,158,111,.1);color:var(--green)}
+.qcm-option.wrong{border-color:var(--red);background:rgba(184,90,90,.1);color:#e8a0a0}
+.qcm-nav{display:flex;justify-content:space-between;align-items:center;margin-top:16px}
+.qcm-counter{font-family:var(--font-mono);font-size:11px;color:var(--text3)}
+.score-display{text-align:center;padding:24px 0}
+.score-big{font-family:var(--font-mono);font-size:56px;font-weight:700;color:var(--gold)}
+.score-label{font-size:12px;color:var(--text2);margin-top:4px}
+.score-msg{font-size:14px;margin-top:16px;line-height:1.6;color:var(--text2)}
+select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239A9899'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
 </style>
 </head>
 <body>
 
-<div class="logo">WABA</div>
-<div class="logo-sub">West Atlantic Business Aviation</div>
+<div class="logo">
+  <div class="logo-mark">W · A · B · A</div>
+  <div class="logo-title">West Atlantic Business Aviation</div>
+  <div class="logo-sub">INTRANET PILOTES</div>
+</div>
 
-<div class="card">
+<!-- CARD CONNEXION / INSCRIPTION -->
+<div class="card" id="card-auth">
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('login')">Connexion</div>
-    <div class="tab" onclick="switchTab('register')">Inscription</div>
+    <button class="tab active" onclick="switchTab('login')">Connexion</button>
+    <button class="tab" onclick="switchTab('register')">Candidature</button>
   </div>
 
-  <div id="message" class="message"></div>
-
-  <!-- CONNEXION -->
+  <!-- LOGIN -->
   <div id="form-login">
     <div class="form-group">
       <label class="form-label">Adresse email</label>
@@ -79,172 +99,542 @@ select.form-input{cursor:pointer;appearance:none;}
       <label class="form-label">Mot de passe</label>
       <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"/>
     </div>
-    <button class="btn-submit" onclick="login()" id="login-btn">Se connecter</button>
+    <button class="btn btn-gold" onclick="signIn()" id="btn-login">Se connecter</button>
+    <div class="message" id="msg-login"></div>
   </div>
 
-  <!-- INSCRIPTION -->
+  <!-- REGISTER STEP 1: Profil -->
   <div id="form-register" style="display:none">
-    <div class="form-group">
-      <label class="form-label">Prénom & Nom</label>
-      <input class="form-input" type="text" id="reg-name" placeholder="Thomas Leroux"/>
+    <div class="step-indicator">
+      <div class="step active" id="step1-ind"><div class="step-num">1</div><span>Profil</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="step2-ind"><div class="step-num">2</div><span>Motivation</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="step3-ind"><div class="step-num">3</div><span>QCM</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="step4-ind"><div class="step-num">4</div><span>Résultat</span></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Adresse email</label>
-      <input class="form-input" type="email" id="reg-email" placeholder="votre@email.com"/>
+
+    <!-- STEP 1 -->
+    <div id="reg-step1">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Prénom</label>
+          <input class="form-input" type="text" id="reg-firstname" placeholder="Thomas"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nom</label>
+          <input class="form-input" type="text" id="reg-lastname" placeholder="Leroux"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="reg-email" placeholder="thomas@email.com"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <input class="form-input" type="password" id="reg-password" placeholder="8 caractères minimum"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nationalité</label>
+          <input class="form-input" type="text" id="reg-nationality" placeholder="Française"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Heures totales</label>
+          <input class="form-input" type="number" id="reg-hours" placeholder="500" min="0"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">SimBrief Pilot ID (optionnel)</label>
+        <input class="form-input" type="text" id="reg-simbrief" placeholder="553724"/>
+      </div>
+      <button class="btn btn-gold" onclick="goStep2()" id="btn-step1">Continuer →</button>
+      <div class="message" id="msg-step1"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Mot de passe</label>
-      <input class="form-input" type="password" id="reg-password" placeholder="8 caractères minimum"/>
+
+    <!-- STEP 2 -->
+    <div id="reg-step2" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Avion souhaité</label>
+        <div class="aircraft-grid">
+          <div class="aircraft-card" id="ac-C750" onclick="selectAC('C750')">
+            <div class="reg">F-EVOK</div>
+            <div class="type">Citation X</div>
+            <div class="range">3460 NM · 8 PAX</div>
+          </div>
+          <div class="aircraft-card" id="ac-C700" onclick="selectAC('C700')">
+            <div class="reg">F-EXZA</div>
+            <div class="type">Citation Longitude</div>
+            <div class="range">3500 NM · 8 PAX</div>
+          </div>
+          <div class="aircraft-card" id="ac-B738" onclick="selectAC('B738')">
+            <div class="reg">F-LIMB</div>
+            <div class="type">Boeing BBJ2</div>
+            <div class="range">6600 NM · 28 PAX</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pourquoi rejoindre WABA ?</label>
+        <textarea class="form-input" id="reg-motivation" placeholder="Décrivez votre motivation, votre expérience en simulation, vos objectifs..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Expérience sur cet avion (heures)</label>
+        <input class="form-input" type="number" id="reg-type-hours" placeholder="0" min="0"/>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="goStep1()" style="width:auto;padding:10px 20px">← Retour</button>
+        <button class="btn btn-gold" onclick="goStep3()" id="btn-step2">QCM technique →</button>
+      </div>
+      <div class="message" id="msg-step2"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">ID SimBrief</label>
-      <input class="form-input" type="text" id="reg-simbrief" placeholder="ex: 553724"/>
-      <div class="role-info">
-        Votre ID SimBrief se trouve sur <strong>simbrief.com → Account → Pilot ID</strong>. Il permettra de charger automatiquement vos plans de vol.
+
+    <!-- STEP 3: QCM -->
+    <div id="reg-step3" style="display:none">
+      <div class="qcm-progress"><div class="qcm-progress-bar" id="qcm-bar" style="width:0%"></div></div>
+      <div class="qcm-counter" id="qcm-counter">Question 1 / 15</div>
+      <div class="qcm-question" id="qcm-question"></div>
+      <div class="qcm-options" id="qcm-options"></div>
+      <div class="qcm-nav">
+        <div></div>
+        <button class="btn btn-gold" id="btn-qcm-next" onclick="nextQuestion()" style="width:auto;padding:8px 20px;display:none">Question suivante →</button>
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Qualification type (QT) souhaitée</label>
-      <select class="form-input" id="reg-qt">
-        <option value="C750">Citation X — C750</option>
-        <option value="C700">Citation Longitude — C700</option>
-        <option value="B738">Boeing BBJ2 — B738</option>
-      </select>
-      <div class="role-info">
-        La QT sera attribuée après validation par l'administration suite à un test sur l'appareil. Vous pouvez candidater à plusieurs QT ultérieurement.
+
+    <!-- STEP 4: Résultat -->
+    <div id="reg-step4" style="display:none">
+      <div class="score-display">
+        <div class="score-big" id="score-display">—</div>
+        <div class="score-label">/ 15 questions</div>
+        <div class="score-msg" id="score-msg"></div>
       </div>
+      <button class="btn btn-gold" onclick="submitCandidature()" id="btn-submit">Soumettre ma candidature ✈</button>
+      <div class="message" id="msg-submit"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Pourquoi souhaitez-vous rejoindre West Atlantic Business Aviation ?</label>
-      <textarea class="form-input" id="reg-motivation" rows="4" placeholder="Parlez-nous de votre expérience sur MSFS, vos motivations, ce que vous souhaitez apporter à la compagnie..."></textarea>
-    </div>
-    <button class="btn-submit" onclick="register()" id="reg-btn">Soumettre ma candidature</button>
-    <div style="font-size:11px;color:var(--text2);margin-top:12px;text-align:center;line-height:1.6">
-      Votre candidature sera examinée par l'administration WABA.<br>Vous serez contacté par email après validation.
-    </div>
+
   </div>
-
 </div>
 
-<div class="back-link">
-  <a href="/">← Retour au site</a>
-</div>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL='https://ncawfnwgihmebztfrekg.supabase.co';
-const SUPABASE_KEY='sb_publishable_cF4czohNpkG2Nb4nYz45Ug_4JglChlU';
-const {createClient}=supabase;
-const db=createClient(SUPABASE_URL,SUPABASE_KEY);
+const { createClient } = supabase;
+const db = createClient('https://ncawfnwgihmebztfrekg.supabase.co','sb_publishable_cF4czohNpkG2Nb4nYz45Ug_4JglChlU');
 
-// Vérifier si déjà connecté
-db.auth.getSession().then(({data:{session}})=>{
-  if(session) redirectAfterLogin(session.user);
-});
+// ─── State ───────────────────────────────────
+let selectedAircraft = null;
+let qcmQuestions = [];
+let qcmAnswers = {};
+let qcmCurrent = 0;
+let qcmScore = 0;
 
-function switchTab(tab){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelector(`.tab:${tab==='login'?'first':'last'}-child`).classList.add('active');
-  document.getElementById('form-login').style.display=tab==='login'?'block':'none';
-  document.getElementById('form-register').style.display=tab==='register'?'block':'none';
-  hideMessage();
+// ─── QCM Questions ───────────────────────────
+const QCM_COMMON = [
+  {
+    id:'m1', cat:'Meteorologie',
+    q:'En route, vous observez un SIGMET mentionnant des CBs isolés sur votre route. Quelle est la meilleure décision ?',
+    opts:['Poursuivre le vol sans modification','Contourner les cellules de 20NM minimum et informer le contrôle','Descendre sous les nuages pour maintenir le contact visuel','Accélérer pour traverser rapidement la zone'],
+    correct:1
+  },
+  {
+    id:'m2', cat:'Meteorologie',
+    q:'Vous lisez le METAR suivant : LFRS 121000Z 27018KT 9999 FEW030 SCT080 14/08 Q1018. Quelle est la visibilité ?',
+    opts:['1000m','9 km','Supérieure à 10km','9999 pieds'],
+    correct:2
+  },
+  {
+    id:'m3', cat:'Meteorologie',
+    q:'Un vent de cisaillement (windshear) en finale est particulièrement dangereux car :',
+    opts:['Il augmente la portance de façon incontrôlable','Il peut provoquer une perte soudaine de vitesse et de portance','Il perturbe uniquement les instruments de navigation','Il est toujours annoncé par le contrôle aérien'],
+    correct:1
+  },
+  {
+    id:'m4', cat:'Meteorologie',
+    q:'Quelle est la définition du plafond (ceiling) ?',
+    opts:['La couche nuageuse la plus haute','La première couche nuageuse couvrant 5/8 ou plus du ciel','La température au niveau du sol','La limite supérieure de l espace aérien'],
+    correct:1
+  },
+  {
+    id:'n1', cat:'Navigation IFR',
+    q:'En RVSM (Reduced Vertical Separation Minima), quel est l espacement vertical entre niveaux de vol ?',
+    opts:['500 ft','1000 ft','2000 ft','300 ft'],
+    correct:1
+  },
+  {
+    id:'n2', cat:'Navigation IFR',
+    q:'La règle semi-circulaire RVSM en Europe prévoit pour un vol vers l est (route magnétique 000-179) :',
+    opts:['Niveaux de vol pairs (FL360, FL380...)','Niveaux de vol impairs (FL350, FL370...)','Niveaux pairs au-dessus de FL290 uniquement','Pas de règle - au choix du pilote'],
+    correct:1
+  },
+  {
+    id:'n3', cat:'Navigation IFR',
+    q:'Qu est-ce que le point ETP (Equal Time Point) ?',
+    opts:['Le point de non-retour','Le point equidistant entre deux aéroports alternatifs','Le point où le temps de vol vers la destination égale celui vers l aéroport de départ','Le carburant minimum requis'],
+    correct:2
+  },
+  {
+    id:'n4', cat:'Navigation IFR',
+    q:'Un NOTAm de classe I concerne :',
+    opts:['Les modifications permanentes de la cartographie','Les informations à court terme affectant la sécurité','Les procédures d urgence','Les restrictions d espace aérien permanent'],
+    correct:1
+  },
+  {
+    id:'r1', cat:'Reglementation',
+    q:'Selon la réglementation EASA Part-NCC, quel est le carburant de contingence minimum ?',
+    opts:['3% du carburant trip','5% du carburant trip','10% du carburant trip','15 minutes de vol en croisière'],
+    correct:1
+  },
+  {
+    id:'r2', cat:'Reglementation',
+    q:'En cas de dépressurisation cabine à FL430, quelle est la priorité immédiate ?',
+    opts:['Annoncer le PAN PAN puis descendre','Masques O2, descendre urgence FL100 ou MEA si plus élevé, PAN PAN','Squawk 7700 et continuer à altitude','Contacter le centre de contrôle et demander instructions'],
+    correct:1
+  },
+];
+
+const QCM_C750 = [
+  {
+    id:'c750_1', cat:'Citation X',
+    q:'Le Cessna Citation X (C750) est certifié pour quelle altitude maximale ?',
+    opts:['FL430','FL450','FL510','FL390'],
+    correct:2
+  },
+  {
+    id:'c750_2', cat:'Citation X',
+    q:'La vitesse de croisière typique du Citation X est d environ :',
+    opts:['Mach 0.72','Mach 0.80','Mach 0.92','Mach 0.65'],
+    correct:2
+  },
+  {
+    id:'c750_3', cat:'Citation X',
+    q:'En cas de panne moteur au décollage sur Citation X, la procédure initiale préconise :',
+    opts:['Couper immédiatement les deux moteurs','Maintenir le cap de piste, réduire le moteur en panne, ne pas retracter le train immédiatement','Effectuer un virage immédiat vers la piste d en face','Passer en VFR et contacter le contrôle'],
+    correct:1
+  },
+  {
+    id:'c750_4', cat:'Citation X',
+    q:'Le système de pressurisation du Citation X maintient une altitude cabine de :',
+    opts:['8000 ft à FL430','10000 ft à FL430','6000 ft à FL430','Pression ambiante en permanence'],
+    correct:0
+  },
+  {
+    id:'c750_5', cat:'Citation X',
+    q:'Quel type de carburant utilise le Citation X ?',
+    opts:['Avgas 100LL uniquement','Jet A-1 ou Jet A','Super 98 sans plomb','Kérosène TR0 uniquement'],
+    correct:1
+  },
+];
+
+const QCM_C700 = [
+  {
+    id:'c700_1', cat:'Citation Longitude',
+    q:'Le Cessna Citation Longitude (C700) dispose de combien de passagers maximum ?',
+    opts:['6 passagers','8 passagers','10 passagers','12 passagers'],
+    correct:1
+  },
+  {
+    id:'c700_2', cat:'Citation Longitude',
+    q:'L altitude maximale de certification du Citation Longitude est :',
+    opts:['FL430','FL450','FL410','FL480'],
+    correct:1
+  },
+  {
+    id:'c700_3', cat:'Citation Longitude',
+    q:'Le Citation Longitude est équipé du système avionique :',
+    opts:['Garmin G3000','Collins Pro Line Fusion','Honeywell Primus Epic','Thales TopDeck'],
+    correct:0
+  },
+  {
+    id:'c700_4', cat:'Citation Longitude',
+    q:'En cas d alerte TCAS RA (Resolution Advisory), le pilote doit :',
+    opts:['Ignorer et suivre les instructions ATC','Suivre immédiatement les indications du TCAS même si contraires aux instructions ATC','Informer le contrôle avant d agir','Désactiver l autopilote uniquement'],
+    correct:1
+  },
+  {
+    id:'c700_5', cat:'Citation Longitude',
+    q:'Le range approximatif du Citation Longitude est :',
+    opts:['2500 NM','3500 NM','4500 NM','5000 NM'],
+    correct:1
+  },
+];
+
+const QCM_B738 = [
+  {
+    id:'b738_1', cat:'Boeing BBJ2',
+    q:'Le BBJ2 (Boeing Business Jet 2) est dérivé de quel avion commercial ?',
+    opts:['Boeing 737-700','Boeing 737-800','Boeing 737-900','Boeing 757-200'],
+    correct:1
+  },
+  {
+    id:'b738_2', cat:'Boeing BBJ2',
+    q:'Quelle est la principale différence entre le BBJ2 et le B737-800 commercial ?',
+    opts:['Moteurs plus puissants','Réservoirs supplémentaires et intérieur VIP','Ailes plus longues','Trains d atterrissage renforcés'],
+    correct:1
+  },
+  {
+    id:'b738_3', cat:'Boeing BBJ2',
+    q:'Le BBJ2 F-LIMB de WABA emporte 28 passagers. Sa capacité en config high-density serait de :',
+    opts:['100 passagers','162 passagers','189 passagers','210 passagers'],
+    correct:1
+  },
+  {
+    id:'b738_4', cat:'Boeing BBJ2',
+    q:'Le système anti-icing des moteurs CFM56 du BBJ2 utilise :',
+    opts:['Un système électrique','De l air chaud prélevé sur les compresseurs (bleed air)','Un liquide de dégivrage','Des résistances chauffantes'],
+    correct:1
+  },
+  {
+    id:'b738_5', cat:'Boeing BBJ2',
+    q:'En cas d alerte EGPWS (Enhanced Ground Proximity Warning), la procédure immédiate est :',
+    opts:['Vérifier les instruments et évaluer','Maximum thrust, maximum pitch up, sortir flaps','Réduire la vitesse et virer','Contacter le contrôle et demander vectors'],
+    correct:1
+  },
+];
+
+function getQCMForAircraft(ac) {
+  const specific = ac === 'C750' ? QCM_C750 : ac === 'C700' ? QCM_C700 : QCM_B738;
+  return [...QCM_COMMON, ...specific];
 }
 
-function showMessage(msg,type='error'){
-  const el=document.getElementById('message');
-  el.textContent=msg;
-  el.className='message '+type;
-  el.style.display='block';
+// ─── Navigation ──────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (tab==='login'&&i===0)||(tab==='register'&&i===1)));
+  document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('form-register').style.display = tab === 'register' ? 'block' : 'none';
 }
-function hideMessage(){ document.getElementById('message').style.display='none'; }
 
-async function login(){
-  const email=document.getElementById('login-email').value.trim();
-  const password=document.getElementById('login-password').value;
-  if(!email||!password){showMessage('Veuillez remplir tous les champs.');return;}
-  
-  const btn=document.getElementById('login-btn');
-  btn.disabled=true;btn.textContent='Connexion en cours…';
+function setStep(n) {
+  [1,2,3,4].forEach(i => {
+    document.getElementById('reg-step'+i).style.display = i===n ? 'block' : 'none';
+    const ind = document.getElementById('step'+i+'-ind');
+    ind.classList.toggle('active', i===n);
+    ind.classList.toggle('done', i<n);
+  });
+}
 
-  const{data,error}=await db.auth.signInWithPassword({email,password});
-  if(error){
-    showMessage('Email ou mot de passe incorrect.');
-    btn.disabled=false;btn.textContent='Se connecter';
-    return;
+function updateStepIndicators(current) {
+  [1,2,3,4].forEach(i => {
+    const ind = document.getElementById('step'+i+'-ind');
+    ind.classList.remove('active','done');
+    if(i === current) ind.classList.add('active');
+    if(i < current) ind.classList.add('done');
+  });
+}
+
+function goStep1() { setStep(1); updateStepIndicators(1); }
+
+function goStep2() {
+  const fn = document.getElementById('reg-firstname').value.trim();
+  const ln = document.getElementById('reg-lastname').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pw = document.getElementById('reg-password').value;
+  if(!fn||!ln||!email||!pw) { showMsg('msg-step1','Tous les champs obligatoires doivent être remplis.'); return; }
+  if(pw.length < 8) { showMsg('msg-step1','Le mot de passe doit faire au moins 8 caractères.'); return; }
+  setStep(2); updateStepIndicators(2);
+}
+
+function goStep1() { setStep(1); updateStepIndicators(1); }
+
+function selectAC(ac) {
+  selectedAircraft = ac;
+  ['C750','C700','B738'].forEach(a => document.getElementById('ac-'+a).classList.toggle('selected', a===ac));
+}
+
+function goStep3() {
+  if(!selectedAircraft) { showMsg('msg-step2','Veuillez choisir un avion.'); return; }
+  const motivation = document.getElementById('reg-motivation').value.trim();
+  if(!motivation || motivation.length < 30) { showMsg('msg-step2','Décrivez votre motivation en quelques phrases (min. 30 caractères).'); return; }
+  qcmQuestions = getQCMForAircraft(selectedAircraft);
+  qcmAnswers = {}; qcmCurrent = 0; qcmScore = 0;
+  setStep(3); updateStepIndicators(3);
+  renderQuestion();
+}
+
+// ─── QCM ─────────────────────────────────────
+function renderQuestion() {
+  const q = qcmQuestions[qcmCurrent];
+  const total = qcmQuestions.length;
+  document.getElementById('qcm-counter').textContent = 'Question ' + (qcmCurrent+1) + ' / ' + total + ' · ' + q.cat;
+  document.getElementById('qcm-bar').style.width = (qcmCurrent/total*100) + '%';
+  document.getElementById('qcm-question').textContent = q.q;
+  document.getElementById('btn-qcm-next').style.display = 'none';
+  const opts = document.getElementById('qcm-options');
+  opts.innerHTML = q.opts.map((o,i) =>
+    '<button class="qcm-option" onclick="answerQuestion('+i+')" id="opt-'+i+'">'+
+    '<span style="font-family:var(--font-mono);color:var(--text3);margin-right:8px">'+'ABCD'[i]+'.</span>'+o+
+    '</button>'
+  ).join('');
+}
+
+function answerQuestion(idx) {
+  const q = qcmQuestions[qcmCurrent];
+  qcmAnswers[q.id] = idx;
+  const correct = idx === q.correct;
+  if(correct) qcmScore++;
+  // Show feedback
+  q.opts.forEach((_,i) => {
+    const btn = document.getElementById('opt-'+i);
+    if(!btn) return;
+    btn.disabled = true;
+    if(i === q.correct) btn.classList.add('correct');
+    else if(i === idx && !correct) btn.classList.add('wrong');
+  });
+  document.getElementById('btn-qcm-next').style.display = 'block';
+  if(qcmCurrent === qcmQuestions.length-1) {
+    document.getElementById('btn-qcm-next').textContent = 'Voir mon résultat →';
   }
-  showMessage('Connexion réussie ! Redirection…','success');
-  setTimeout(()=>redirectAfterLogin(data.user),1000);
 }
 
-async function redirectAfterLogin(user){
-  // Récupérer le profil pilote et son rôle
-  const{data:pilot}=await db.from('pilots').select('*').eq('user_id',user.id).single();
-  if(!pilot){
-    // Profil pas encore créé ou pas encore validé
-    showMessage('Votre compte est en attente de validation par l\'administration.');
-    await db.auth.signOut();
-    return;
+function nextQuestion() {
+  qcmCurrent++;
+  if(qcmCurrent >= qcmQuestions.length) {
+    showResult(); return;
   }
-  const role=pilot.role||'PILOTE';
-  // Rediriger selon le rôle
-  if(role==='ADMIN'||role==='DISPATCH'){
-    window.location.href='waba-ops-v3.html';
+  renderQuestion();
+}
+
+function showResult() {
+  setStep(4); updateStepIndicators(4);
+  document.getElementById('qcm-bar').style.width = '100%';
+  const total = qcmQuestions.length;
+  const pct = Math.round(qcmScore/total*100);
+  document.getElementById('score-display').textContent = qcmScore + '/' + total;
+  let msg = '';
+  if(pct >= 80) {
+    msg = 'Excellente performance ! Votre dossier sera examiné en priorité par l équipe WABA.';
+    document.getElementById('score-display').style.color = 'var(--green)';
+  } else if(pct >= 60) {
+    msg = 'Bonne base technique. Votre candidature sera étudiée par l administration.';
+    document.getElementById('score-display').style.color = 'var(--gold)';
   } else {
-    window.location.href='waba-pilot.html';
+    msg = 'Nous avons reçu votre candidature. Nous vous encourageons à approfondir vos connaissances techniques avant notre entretien.';
+    document.getElementById('score-display').style.color = 'var(--orange)';
   }
+  document.getElementById('score-msg').textContent = msg;
 }
 
-async function register(){
-  const name=document.getElementById('reg-name').value.trim();
-  const email=document.getElementById('reg-email').value.trim();
-  const password=document.getElementById('reg-password').value;
-  const simbrief=document.getElementById('reg-simbrief').value.trim();
-  const qt=document.getElementById('reg-qt').value;
-  const motivation=document.getElementById('reg-motivation').value.trim();
+// ─── Soumission ───────────────────────────────
+async function submitCandidature() {
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.textContent = 'Envoi en cours...';
 
-  if(!name||!email||!password){showMessage('Veuillez remplir tous les champs obligatoires.');return;}
-  if(password.length<8){showMessage('Le mot de passe doit faire au moins 8 caracteres.');return;}
-  if(!motivation){showMessage('Veuillez indiquer vos motivations pour rejoindre WABA.');return;}
+  const firstname = document.getElementById('reg-firstname').value.trim();
+  const lastname = document.getElementById('reg-lastname').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const nationality = document.getElementById('reg-nationality').value.trim();
+  const totalHours = parseInt(document.getElementById('reg-hours').value)||0;
+  const typeHours = parseInt(document.getElementById('reg-type-hours').value)||0;
+  const simbrief = document.getElementById('reg-simbrief').value.trim();
+  const motivation = document.getElementById('reg-motivation').value.trim();
 
-  const btn=document.getElementById('reg-btn');
-  btn.disabled=true;btn.textContent='Envoi en cours...';
-
-  const{data,error}=await db.auth.signUp({email,password,options:{
-    data:{name,simbrief_id:simbrief,qt_requested:qt,status:'PENDING'}
-  }});
-
-  if(error){
-    showMessage('Erreur : '+error.message);
-    btn.disabled=false;btn.textContent='Soumettre ma candidature';
-    return;
-  }
-
-  await db.from('pilots').insert({
-    id:'P_'+Date.now(),
-    name:name,
-    rank:'CPT',
-    role:'PILOTE',
-    base:'LFRS',
-    total_hours:0,
-    ratings:[],
-    email:email,
-    simbrief_id:simbrief||null,
-    qt_requested:qt,
-    motivation:motivation,
-    user_id:data.user?data.user.id:null,
-    status:'PENDING',
+  // Build QCM detail
+  const qcmDetail = {};
+  qcmQuestions.forEach(q => {
+    const ans = qcmAnswers[q.id];
+    qcmDetail[q.id] = {
+      question: q.q,
+      category: q.cat,
+      answer: ans !== undefined ? ans : null,
+      answer_text: ans !== undefined ? q.opts[ans] : 'Non répondu',
+      correct: ans === q.correct,
+      correct_text: q.opts[q.correct]
+    };
   });
 
-  showMessage('Candidature envoyee ! Votre dossier sera examine par administration WABA.','success');
-  btn.disabled=false;btn.textContent='Soumettre ma candidature';
+  // 1. Créer compte auth Supabase
+  const { data: authData, error: authError } = await db.auth.signUp({
+    email, password,
+    options: { data: { name: firstname + ' ' + lastname } }
+  });
+
+  if(authError) {
+    showMsg('msg-submit', 'Erreur : ' + authError.message);
+    btn.disabled = false; btn.textContent = 'Soumettre ma candidature ✈';
+    return;
+  }
+
+  // 2. Insérer dans candidatures
+  const { error: candError } = await db.from('candidatures').insert({
+    name: firstname + ' ' + lastname,
+    email,
+    nationality,
+    aircraft_requested: selectedAircraft,
+    motivation,
+    total_hours: totalHours,
+    hours_on_type: typeHours,
+    simbrief_id: simbrief || null,
+    qcm_answers: qcmAnswers,
+    qcm_score: qcmScore,
+    qcm_detail: qcmDetail,
+    status: 'PENDING',
+  });
+
+  if(candError) {
+    showMsg('msg-submit', 'Erreur enregistrement : ' + candError.message);
+    btn.disabled = false; btn.textContent = 'Soumettre ma candidature ✈';
+    return;
+  }
+
+  // Succès
+  document.getElementById('card-auth').innerHTML = `
+    <div style="text-align:center;padding:20px 0">
+      <div style="font-size:48px;margin-bottom:16px">✈</div>
+      <div style="font-family:var(--font-display);font-size:22px;margin-bottom:12px">Candidature envoyée !</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:20px">
+        Votre dossier a été transmis à l'équipe WABA.<br>
+        Score QCM : <span style="color:var(--gold);font-weight:700">${qcmScore}/${qcmQuestions.length}</span><br>
+        Vous recevrez une réponse par email sous 48-72h.
+      </div>
+      <button class="btn btn-outline" onclick="location.reload()" style="max-width:200px;margin:0 auto">Retour connexion</button>
+    </div>
+  `;
 }
 
+// ─── Connexion ────────────────────────────────
+async function signIn() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-password').value;
+  if(!email||!pw) { showMsg('msg-login','Email et mot de passe requis.'); return; }
+  const btn = document.getElementById('btn-login');
+  btn.disabled=true; btn.textContent='Connexion...';
+  const { error } = await db.auth.signInWithPassword({ email, password: pw });
+  if(error) {
+    showMsg('msg-login','Identifiants incorrects.');
+    btn.disabled=false; btn.textContent='Se connecter';
+    return;
+  }
+  // Check role
+  const { data: { session } } = await db.auth.getSession();
+  if(!session) return;
+  const { data: pilot } = await db.from('pilots').select('role,status').eq('user_id', session.user.id).single();
+  if(!pilot) {
+    showMsg('msg-login','Compte non activé. Contactez l administration WABA.');
+    await db.auth.signOut();
+    btn.disabled=false; btn.textContent='Se connecter';
+    return;
+  }
+  if(pilot.status === 'PENDING') {
+    showMsg('msg-login','Votre candidature est en cours d examen. Vous serez notifié par email.');
+    await db.auth.signOut();
+    btn.disabled=false; btn.textContent='Se connecter';
+    return;
+  }
+  window.location.href = pilot.role==='ADMIN'||pilot.role==='DISPATCH' ? 'waba-ops-v3.html' : 'waba-pilot.html';
+}
 
+// ─── Utils ────────────────────────────────────
+function showMsg(id, msg, type='error') {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'message ' + type;
+  el.style.display = 'block';
+}
 
-// Enter key support
-document.addEventListener('keypress',function(e){
-  if(e.key==='Enter'){
-    if(document.getElementById('form-login').style.display!=='none') login();
-    else register();
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter') {
+    if(document.getElementById('form-login').style.display !== 'none') signIn();
   }
 });
 </script>
