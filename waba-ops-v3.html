@@ -192,6 +192,9 @@ select.form-input{cursor:pointer;}
     <div class="nav-item" data-page="market"><span class="nav-icon">◇</span>Marché</div>
     <div class="nav-sec">Sécurité</div>
     <div class="nav-item" data-page="safety"><span class="nav-icon">◉</span>Sécurité des vols</div>
+    <div class="nav-sec">Ressources Humaines</div>
+    <div class="nav-item" data-page="candidatures"><span class="nav-icon">◑</span>Candidatures<span class="nav-badge" id="cand-badge" style="display:none;background:var(--gold);color:#000">0</span></div>
+    <div class="nav-item" data-page="pilots"><span class="nav-icon">◐</span>Pilotes</div>
   </nav>
   <div class="sb-footer">
     <div class="theme-row" onclick="toggleTheme()">
@@ -1327,6 +1330,266 @@ const _savedTheme=localStorage.getItem('waba-theme')||'dark';
 document.documentElement.setAttribute('data-theme',_savedTheme);
 const _tl=document.getElementById('theme-lbl');if(_tl)_tl.textContent=_savedTheme==='dark'?'MODE NUIT':'MODE JOUR';
 checkAuth();
+
+
+// ═══════════════════════════════════════════════════════
+// CANDIDATURES
+// ═══════════════════════════════════════════════════════
+let allCandidatures = [];
+
+async function loadCandidatures() {
+  const { data, error } = await db.from('candidatures')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if(error) { showToast('Erreur chargement candidatures','err'); return; }
+  allCandidatures = data || [];
+  // Update badge
+  const pending = allCandidatures.filter(c => c.status === 'PENDING').length;
+  const badge = document.getElementById('cand-badge');
+  if(badge) { badge.textContent = pending; badge.style.display = pending ? 'inline' : 'none'; }
+  renderCandidatures();
+}
+
+function renderCandidatures() {
+  const filter = document.getElementById('cand-filter')?.value || 'PENDING';
+  const list = document.getElementById('candidatures-list');
+  if(!list) return;
+
+  const filtered = filter === 'ALL' ? allCandidatures : allCandidatures.filter(c => c.status === filter);
+
+  if(!filtered.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">Aucune candidature ' + (filter !== 'ALL' ? 'avec ce statut' : '') + '</div>';
+    return;
+  }
+
+  const statusColors = { PENDING:'var(--gold)', ACCEPTED:'var(--green)', REFUSED:'var(--red)', WAITLIST:'var(--blue)' };
+  const statusLabels = { PENDING:'En attente', ACCEPTED:'Accepté', REFUSED:'Refusé', WAITLIST:'Liste d attente' };
+  const acLabels = { C750:'Citation X', C700:'Citation Longitude', B738:'Boeing BBJ2' };
+
+  list.innerHTML = filtered.map(c => {
+    const col = statusColors[c.status] || 'var(--text3)';
+    const date = new Date(c.created_at).toLocaleDateString('fr-FR');
+    const scorePct = c.qcm_score ? Math.round(c.qcm_score/15*100) : 0;
+    const scoreCol = scorePct >= 80 ? 'var(--green)' : scorePct >= 60 ? 'var(--gold)' : 'var(--orange)';
+    return `<div class="card" style="margin-bottom:10px;padding:16px 20px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'" onclick="openCandidature('${c.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:700;font-size:14px;color:${col}">${c.name.split(' ').map(n=>n[0]).join('').slice(0,2)}</div>
+          <div>
+            <div style="font-weight:600;font-size:14px">${c.name}</div>
+            <div style="font-size:11px;color:var(--text2)">${c.email} · ${acLabels[c.aircraft_requested]||c.aircraft_requested}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="text-align:center">
+            <div style="font-family:var(--font-mono);font-weight:700;font-size:16px;color:${scoreCol}">${c.qcm_score||0}/15</div>
+            <div style="font-size:9px;color:var(--text3)">QCM</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:11px;color:var(--text2)">${c.total_hours||0}h</div>
+            <div style="font-size:9px;color:var(--text3)">Total</div>
+          </div>
+          <div style="background:${col}18;color:${col};border:1px solid ${col}44;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;font-family:var(--font-mono)">${statusLabels[c.status]||c.status}</div>
+          <div style="font-size:10px;color:var(--text3)">${date}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openCandidature(id) {
+  const c = allCandidatures.find(x => x.id === id);
+  if(!c) return;
+  const modal = document.getElementById('cand-modal');
+  const acLabels = { C750:'Citation X (F-EVOK)', C700:'Citation Longitude (F-EXZA)', B738:'Boeing BBJ2 (F-LIMB)' };
+  const statusColors = { PENDING:'var(--gold)', ACCEPTED:'var(--green)', REFUSED:'var(--red)', WAITLIST:'var(--blue)' };
+  const statusLabels = { PENDING:'En attente', ACCEPTED:'Accepté', REFUSED:'Refusé', WAITLIST:'Liste d attente' };
+  const scorePct = c.qcm_score ? Math.round(c.qcm_score/15*100) : 0;
+  const scoreCol = scorePct >= 80 ? 'var(--green)' : scorePct >= 60 ? 'var(--gold)' : 'var(--orange)';
+  const date = new Date(c.created_at).toLocaleDateString('fr-FR', {day:'2-digit',month:'long',year:'numeric'});
+
+  // Build QCM detail
+  let qcmHtml = '';
+  if(c.qcm_detail) {
+    const detail = typeof c.qcm_detail === 'string' ? JSON.parse(c.qcm_detail) : c.qcm_detail;
+    qcmHtml = Object.entries(detail).map(([k,v]) => `
+      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:6px;border-left:3px solid ${v.correct ? 'var(--green)' : 'var(--red)'}">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font-mono)">${v.category}</div>
+        <div style="font-size:12px;font-weight:500;margin-bottom:4px">${v.question}</div>
+        <div style="font-size:11px;color:${v.correct ? 'var(--green)' : 'var(--red)'}">
+          ${v.correct ? '✓' : '✗'} Réponse : ${v.answer_text||'Non répondu'}
+          ${!v.correct ? '<span style="color:var(--text2)"> · Correct : '+v.correct_text+'</span>' : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  document.getElementById('cand-modal-content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px">
+      <div>
+        <div style="font-family:var(--font-display);font-size:22px;margin-bottom:4px">${c.name}</div>
+        <div style="font-size:12px;color:var(--text2)">${c.email} · ${c.nationality||'—'} · Candidature du ${date}</div>
+      </div>
+      <button onclick="document.getElementById('cand-modal').style.display='none'" style="background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px">✕</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+      <div class="kpi-card"><div class="kpi-val" style="color:${scoreCol}">${c.qcm_score||0}/15</div><div class="kpi-label">Score QCM</div></div>
+      <div class="kpi-card"><div class="kpi-val">${c.total_hours||0}h</div><div class="kpi-label">Heures totales</div></div>
+      <div class="kpi-card"><div class="kpi-val">${c.hours_on_type||0}h</div><div class="kpi-label">Heures sur type</div></div>
+      <div class="kpi-card"><div class="kpi-val" style="font-size:12px">${acLabels[c.aircraft_requested]||c.aircraft_requested}</div><div class="kpi-label">Avion demandé</div></div>
+    </div>
+
+    <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;border-left:3px solid var(--gold)">
+      <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:6px;font-family:var(--font-mono)">MOTIVATION</div>
+      <div style="font-size:13px;line-height:1.7;color:var(--text2)">${c.motivation||'—'}</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:10px;font-family:var(--font-mono);letter-spacing:1px">DÉTAIL QCM (${scorePct}%)</div>
+    <div style="max-height:280px;overflow-y:auto;margin-bottom:20px">${qcmHtml||'<div style="color:var(--text3);font-size:12px">Aucune donnée QCM</div>'}</div>
+
+    <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:20px">
+      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono)">NOTE ADMIN</div>
+      <textarea id="cand-notes-${c.id}" style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-size:12px;font-family:var(--font-body);resize:none;height:60px;outline:none">${c.admin_notes||''}</textarea>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      <button class="btn" style="background:var(--green);color:#fff;font-size:11px;padding:10px" onclick="updateCandidature('${c.id}','ACCEPTED')">✓ Accepter</button>
+      <button class="btn" style="background:var(--blue);color:#fff;font-size:11px;padding:10px" onclick="updateCandidature('${c.id}','WAITLIST')">◷ Liste attente</button>
+      <button class="btn" style="background:var(--red);color:#fff;font-size:11px;padding:10px" onclick="updateCandidature('${c.id}','REFUSED')">✗ Refuser</button>
+      <button class="btn btn-outline" style="font-size:11px;padding:10px" onclick="saveNotes('${c.id}')">💾 Sauver notes</button>
+    </div>
+
+    ${c.status === 'ACCEPTED' && !c.pilot_id ? `
+    <div style="margin-top:16px;padding:16px;background:rgba(90,158,111,.08);border:1px solid rgba(90,158,111,.2);border-radius:var(--radius-sm)">
+      <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:10px">CRÉER LE COMPTE PILOTE</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:4px">Rang</label>
+          <select id="new-rank-${c.id}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px;font-size:12px;font-family:var(--font-body)">
+            <option value="CPT">Commandant de bord</option>
+            <option value="FO">Copilote</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:4px">Qualification</label>
+          <select id="new-qt-${c.id}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px;font-size:12px;font-family:var(--font-body)">
+            <option value="C750">Citation X (C750)</option>
+            <option value="C700">Citation Longitude (C700)</option>
+            <option value="B738">Boeing BBJ2 (B738)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-gold" style="font-size:11px;padding:10px" onclick="createPilot('${c.id}')">✈ Créer le compte pilote</button>
+    </div>` : ''}
+  `;
+  modal.style.display = 'block';
+  // Pre-select aircraft
+  const qtSel = document.getElementById('new-qt-'+c.id);
+  if(qtSel && c.aircraft_requested) qtSel.value = c.aircraft_requested;
+}
+
+async function updateCandidature(id, status) {
+  const notes = document.getElementById('cand-notes-'+id)?.value || '';
+  const { error } = await db.from('candidatures').update({
+    status, admin_notes: notes, reviewed_at: new Date().toISOString()
+  }).eq('id', id);
+  if(error) { showToast('Erreur mise à jour','err'); return; }
+  showToast('Statut mis à jour : ' + status);
+  document.getElementById('cand-modal').style.display = 'none';
+  loadCandidatures();
+}
+
+async function saveNotes(id) {
+  const notes = document.getElementById('cand-notes-'+id)?.value || '';
+  const { error } = await db.from('candidatures').update({ admin_notes: notes }).eq('id', id);
+  if(error) { showToast('Erreur sauvegarde','err'); return; }
+  showToast('Notes sauvegardées');
+}
+
+async function createPilot(candId) {
+  const c = allCandidatures.find(x => x.id === candId);
+  if(!c) return;
+  const rank = document.getElementById('new-rank-'+candId)?.value || 'CPT';
+  const qt = document.getElementById('new-qt-'+candId)?.value || c.aircraft_requested;
+  const pilotId = 'P_' + Date.now();
+
+  const { error } = await db.from('pilots').insert({
+    id: pilotId, name: c.name, rank, role: 'PILOTE',
+    base: 'LFRS', total_hours: c.total_hours||0,
+    ratings: [qt], email: c.email,
+    simbrief_id: c.simbrief_id||null,
+    motivation: c.motivation, nationality: c.nationality,
+    qcm_score: c.qcm_score, status: 'ACTIVE',
+  });
+
+  if(error) { showToast('Erreur création pilote : '+error.message,'err'); return; }
+
+  // Mark candidature as processed
+  await db.from('candidatures').update({ pilot_id: pilotId }).eq('id', candId);
+
+  showToast(c.name + ' — Compte pilote créé !');
+  document.getElementById('cand-modal').style.display = 'none';
+  loadCandidatures();
+}
+
+async function loadPilotsList() {
+  const { data } = await db.from('pilots').select('*').order('name');
+  const list = document.getElementById('pilots-list');
+  if(!list || !data) return;
+  const rankLabels = { CPT:'Commandant', FO:'Copilote', OBS:'Observateur' };
+  list.innerHTML = data.map(p => `
+    <div class="card" style="margin-bottom:8px;padding:14px 18px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:700;font-size:12px;color:var(--gold)">${p.name.split(' ').map(n=>n[0]).join('').slice(0,2)}</div>
+          <div>
+            <div style="font-weight:600">${p.name}</div>
+            <div style="font-size:11px;color:var(--text2)">${rankLabels[p.rank]||p.rank} · ${p.email||'—'}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="font-size:11px;color:var(--text2)">${p.total_hours||0}h · ${(p.ratings||[]).join(', ')||'—'}</div>
+          <div style="font-size:10px;padding:2px 8px;border-radius:4px;background:${p.status==='ACTIVE'?'rgba(90,158,111,.15)':'rgba(184,90,90,.15)'};color:${p.status==='ACTIVE'?'var(--green)':'var(--red)'}">${p.status||'ACTIVE'}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
 </script>
 </body>
-</html>
+</html><div id="page-candidatures" class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Candidatures</div>
+      <div class="page-sub">Gestion des dossiers de candidature pilotes</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="cand-filter" onchange="renderCandidatures()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-family:var(--font-body)">
+        <option value="ALL">Tous les dossiers</option>
+        <option value="PENDING" selected>En attente</option>
+        <option value="ACCEPTED">Acceptés</option>
+        <option value="REFUSED">Refusés</option>
+        <option value="WAITLIST">Liste d attente</option>
+      </select>
+      <button class="btn btn-outline" onclick="loadCandidatures()" style="padding:6px 14px;font-size:11px">↻ Actualiser</button>
+    </div>
+  </div>
+  <div id="candidatures-list"></div>
+  <!-- Modal détail candidature -->
+  <div id="cand-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;overflow-y:auto;padding:40px 20px">
+    <div style="max-width:720px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:32px">
+      <div id="cand-modal-content"></div>
+    </div>
+  </div>
+</div>
+
+<div id="page-pilots" class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Pilotes actifs</div>
+      <div class="page-sub">Gestion de l équipe WABA</div>
+    </div>
+  </div>
+  <div id="pilots-list"></div>
+</div>
